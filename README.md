@@ -1,8 +1,8 @@
-# 🎬 VideoSplit API
+# VideoSplit API
 
 A fast, simple REST API for splitting videos into equal-length segments. Built with FastAPI and FFmpeg.
 
-## ✨ Features
+## Features
 
 - **Fast Processing**: Uses FFmpeg's copy codec (no re-encoding)
 - **Simple API**: Upload video, get download links
@@ -10,7 +10,7 @@ A fast, simple REST API for splitting videos into equal-length segments. Built w
 - **RESTful Design**: Clean, predictable endpoints
 - **Auto Documentation**: Interactive API docs at `/docs`
 
-## 🚀 Quick Start
+## Quick Start
 
 ### Prerequisites
 
@@ -113,7 +113,7 @@ curl http://localhost:8000/api/v1/job/abc-123
 curl -X DELETE http://localhost:8000/api/v1/job/abc-123
 ```
 
-## 🏗️ Project Structure
+## Project Structure
 ```
 videosplit-api/
 ├── app/
@@ -131,7 +131,7 @@ videosplit-api/
 └── README.md
 ```
 
-## 🔧 Configuration
+## Configuration
 
 The API can be configured via environment variables:
 ```bash
@@ -140,7 +140,7 @@ PORT=8000
 MAX_FILE_SIZE_MB=500
 ```
 
-## 🐳 Docker (Optional)
+## Docker (Optional)
 ```dockerfile
 FROM python:3.11-slim
 
@@ -155,64 +155,7 @@ COPY . .
 CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 ```
 
-## 📝 License
-
-MIT License - feel free to use this project however you'd like!
-
-## 🤝 Contributing
-
-Contributions welcome! Feel free to open issues or submit PRs.
-
-## 🙏 Acknowledgments
+## Acknowledgments
 
 - Built with [FastAPI](https://fastapi.tiangolo.com/)
 - Video processing by [FFmpeg](https://ffmpeg.org/)
-```
-
-Save and close.
-
----
-
-## 🐙 GitHub Repository Setup
-
-### Repository Name Ideas:
-
-**Option 1 (Recommended):**
-```
-videosplit-api
-```
-- Clear, professional
-- Good for portfolio
-- Easy to remember
-
-**Option 2:**
-```
-video-segmenter
-```
-- Descriptive
-- Professional
-
-**Option 3:**
-```
-quick-video-split
-```
-- Marketing-friendly
-- Emphasizes speed
-
-**Option 4:**
-```
-ffmpeg-video-splitter
-```
-- SEO-friendly
-- Clear technology
-
----
-
-### Description:
-```
-⚡ Fast REST API for splitting videos into equal segments. Built with FastAPI + FFmpeg.
-```
-
-Or:
-```
-🎬 Simple API to batch cut videos into smaller segments. No re-encoding, lightning fast.

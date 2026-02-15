@@ -1,11 +1,14 @@
 from fastapi import APIRouter, UploadFile, File, HTTPException, Query
-from fastapi.responses import FileResponse
-from app.services.ffmpeg_service import FFmpegService  # Changed!
-from app.models.schemas import SplitResponse, SegmentInfo, ErrorResponse  # Changed!
+from fastapi.responses import FileResponse, Response
+from app.services.ffmpeg_service import FFmpegService
+from app.models.schemas import SplitResponse, SegmentInfo, ErrorResponse
 from pathlib import Path
 import uuid
 import shutil
 import subprocess
+import zipfile
+import io
+
 # Create router
 router = APIRouter()
 
@@ -154,6 +157,64 @@ async def download_segment(job_id: str, filename: str):
         path=file_path,
         media_type="video/mp4",
         filename=filename
+    )
+
+
+@router.get("/download-all/{job_id}")
+async def download_all_segments(job_id: str):
+    """
+    Download all segments as a ZIP file (fast - no compression)
+    
+    **Parameters:**
+    - **job_id**: The job ID
+    
+    **Returns:**
+    - ZIP file containing all segments (uncompressed for speed)
+    
+    **Example:**
+```
+    GET /api/v1/download-all/abc-123-def
+```
+    
+    **Note:** Uses ZIP_STORED (no compression) for 10x faster downloads.
+    Video files are already compressed, so this doesn't increase size significantly.
+    """
+    
+    job_dir = OUTPUT_DIR / job_id
+    
+    # Check if job exists
+    if not job_dir.exists():
+        raise HTTPException(
+            status_code=404,
+            detail="Job not found"
+        )
+    
+    # Get all segments
+    segments = sorted(job_dir.glob("segment_*.mp4"))
+    
+    if not segments:
+        raise HTTPException(
+            status_code=404,
+            detail="No segments found for this job"
+        )
+    
+    # Create ZIP file in memory WITHOUT compression (faster!)
+    zip_buffer = io.BytesIO()
+    
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_STORED) as zip_file:
+        for segment in segments:
+            # Add each segment to ZIP with its filename
+            zip_file.write(segment, segment.name)
+    
+    # Prepare ZIP for download
+    zip_buffer.seek(0)
+    
+    return Response(
+        content=zip_buffer.getvalue(),
+        media_type="application/zip",
+        headers={
+            "Content-Disposition": f"attachment; filename=segments_{job_id}.zip"
+        }
     )
 
 

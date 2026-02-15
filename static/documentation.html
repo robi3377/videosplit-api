@@ -1,0 +1,1094 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VideoSplit API - Documentation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary: #667eea;
+            --primary-dark: #5568d3;
+            --secondary: #764ba2;
+            --text: #1a1f36;
+            --text-light: #6b7c93;
+            --border: #e3e8ee;
+            --bg: #ffffff;
+            --bg-light: #f6f9fc;
+            --code-bg: #0a2540;
+            --success: #00d924;
+            --sidebar-width: 280px;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+            background: var(--bg-light);
+            color: var(--text);
+            line-height: 1.6;
+            font-size: 15px;
+        }
+
+        /* Layout */
+        .docs-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        /* Sidebar */
+        .sidebar {
+            width: var(--sidebar-width);
+            background: var(--bg);
+            border-right: 1px solid var(--border);
+            position: fixed;
+            height: 100vh;
+            overflow-y: auto;
+            z-index: 100;
+        }
+
+        .sidebar-header {
+            padding: 24px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            font-size: 20px;
+            font-weight: 700;
+            color: var(--text);
+            text-decoration: none;
+        }
+
+        .logo-icon {
+            font-size: 28px;
+        }
+
+        .sidebar-nav {
+            padding: 20px 0;
+        }
+
+        .nav-section {
+            margin-bottom: 30px;
+        }
+
+        .nav-section-title {
+            padding: 8px 24px;
+            font-size: 12px;
+            font-weight: 700;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-light);
+        }
+
+        .nav-item {
+            display: block;
+            padding: 8px 24px;
+            color: var(--text);
+            text-decoration: none;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-light);
+            color: var(--primary);
+        }
+
+        .nav-item.active {
+            color: var(--primary);
+            background: var(--bg-light);
+            border-left: 2px solid var(--primary);
+        }
+
+        .nav-item.method {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .method-badge {
+            font-size: 10px;
+            font-weight: 700;
+            padding: 2px 6px;
+            border-radius: 3px;
+            text-transform: uppercase;
+        }
+
+        .method-badge.post {
+            background: #00d924;
+            color: white;
+        }
+
+        .method-badge.get {
+            background: #0074e0;
+            color: white;
+        }
+
+        .method-badge.delete {
+            background: #ff4444;
+            color: white;
+        }
+
+        /* Main Content */
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+        }
+
+        .content-area {
+            max-width: 1000px;
+            margin: 0 auto;
+            padding: 60px 40px;
+        }
+
+        /* Typography */
+        h1 {
+            font-size: 40px;
+            font-weight: 600;
+            color: var(--text);
+            margin-bottom: 16px;
+            letter-spacing: -0.5px;
+        }
+
+        h2 {
+            font-size: 28px;
+            font-weight: 600;
+            color: var(--text);
+            margin-top: 60px;
+            margin-bottom: 20px;
+            letter-spacing: -0.3px;
+            scroll-margin-top: 20px;
+        }
+
+        h3 {
+            font-size: 20px;
+            font-weight: 600;
+            color: var(--text);
+            margin-top: 40px;
+            margin-bottom: 16px;
+        }
+
+        h4 {
+            font-size: 16px;
+            font-weight: 600;
+            color: var(--text);
+            margin-top: 24px;
+            margin-bottom: 12px;
+        }
+
+        p {
+            color: var(--text-light);
+            margin-bottom: 16px;
+            line-height: 1.7;
+        }
+
+        .subtitle {
+            font-size: 18px;
+            color: var(--text-light);
+            margin-bottom: 40px;
+        }
+
+        /* Endpoint Cards */
+        .endpoint-card {
+            background: var(--bg);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 32px;
+            margin: 32px 0;
+            box-shadow: 0 1px 3px rgba(0, 0, 0, 0.04);
+        }
+
+        .endpoint-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .method-tag {
+            font-size: 13px;
+            font-weight: 700;
+            padding: 6px 12px;
+            border-radius: 6px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .method-tag.post {
+            background: rgba(0, 217, 36, 0.1);
+            color: #00d924;
+        }
+
+        .method-tag.get {
+            background: rgba(0, 116, 224, 0.1);
+            color: #0074e0;
+        }
+
+        .method-tag.delete {
+            background: rgba(255, 68, 68, 0.1);
+            color: #ff4444;
+        }
+
+        .endpoint-path {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+            font-size: 15px;
+            color: var(--text);
+            font-weight: 500;
+        }
+
+        /* Parameters Table */
+        .params-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 24px 0;
+        }
+
+        .params-table th {
+            text-align: left;
+            font-size: 12px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-light);
+            padding: 12px;
+            border-bottom: 1px solid var(--border);
+        }
+
+        .params-table td {
+            padding: 16px 12px;
+            border-bottom: 1px solid var(--border);
+            color: var(--text);
+            font-size: 14px;
+        }
+
+        .params-table tr:last-child td {
+            border-bottom: none;
+        }
+
+        .param-name {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 13px;
+            color: var(--primary);
+            font-weight: 500;
+        }
+
+        .param-type {
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 12px;
+            color: var(--text-light);
+            background: var(--bg-light);
+            padding: 2px 6px;
+            border-radius: 3px;
+        }
+
+        .param-required {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #00d924;
+        }
+
+        .param-optional {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: var(--text-light);
+        }
+
+        /* Code Examples */
+        .code-example-wrapper {
+            margin: 32px 0;
+        }
+
+        .code-tabs {
+            display: flex;
+            gap: 4px;
+            margin-bottom: -1px;
+            border-bottom: 2px solid var(--border);
+        }
+
+        .code-tab {
+            padding: 10px 20px;
+            background: transparent;
+            border: none;
+            color: var(--text-light);
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            font-family: 'SF Mono', Monaco, monospace;
+            transition: all 0.2s;
+            border-bottom: 2px solid transparent;
+            margin-bottom: -2px;
+        }
+
+        .code-tab:hover {
+            color: var(--text);
+        }
+
+        .code-tab.active {
+            color: var(--primary);
+            border-bottom-color: var(--primary);
+        }
+
+        .code-content {
+            display: none;
+        }
+
+        .code-content.active {
+            display: block;
+        }
+
+        pre {
+            background: var(--code-bg);
+            border-radius: 8px;
+            padding: 24px;
+            overflow-x: auto;
+            margin: 0;
+            color: #e3e8ee;
+        }
+
+        code {
+            font-family: 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, monospace;
+            font-size: 13px;
+            line-height: 1.6;
+            color: #e3e8ee;
+        }
+
+        .code-comment {
+            color: #8b949e;
+        }
+
+        .code-string {
+            color: #a5d6ff;
+        }
+
+        .code-number {
+            color: #79c0ff;
+        }
+
+        .code-keyword {
+            color: #ff7b72;
+        }
+
+        /* Callouts */
+        .callout {
+            padding: 16px 20px;
+            border-radius: 8px;
+            margin: 24px 0;
+            border-left: 3px solid;
+        }
+
+        .callout.info {
+            background: rgba(102, 126, 234, 0.05);
+            border-color: var(--primary);
+        }
+
+        .callout.warning {
+            background: rgba(255, 193, 7, 0.05);
+            border-color: #ffc107;
+        }
+
+        .callout.success {
+            background: rgba(0, 217, 36, 0.05);
+            border-color: #00d924;
+        }
+
+        .callout-title {
+            font-weight: 600;
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .callout.info .callout-title {
+            color: var(--primary);
+        }
+
+        .callout.warning .callout-title {
+            color: #ffc107;
+        }
+
+        .callout.success .callout-title {
+            color: #00d924;
+        }
+
+        /* Inline Code */
+        .content-area code {
+            background: rgba(102, 126, 234, 0.1);
+            color: var(--primary);
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-family: 'SF Mono', Monaco, monospace;
+            font-size: 13px;
+        }
+
+        .content-area pre code {
+            background: none;
+            color: inherit;
+            padding: 0;
+        }
+
+        /* Links */
+        a {
+            color: var(--primary);
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        a:hover {
+            color: var(--primary-dark);
+        }
+
+        /* Back to App Button */
+        .back-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            background: var(--primary);
+            color: white;
+            border-radius: 6px;
+            text-decoration: none;
+            font-weight: 500;
+            font-size: 14px;
+            margin-bottom: 40px;
+            transition: all 0.2s;
+        }
+
+        .back-button:hover {
+            background: var(--primary-dark);
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.3);
+        }
+
+        /* Mobile Responsive */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s;
+            }
+
+            .sidebar.open {
+                transform: translateX(0);
+            }
+
+            .main-content {
+                margin-left: 0;
+            }
+
+            .content-area {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 32px;
+            }
+
+            h2 {
+                font-size: 24px;
+            }
+
+            .endpoint-card {
+                padding: 20px;
+            }
+
+            .mobile-menu-toggle {
+                display: block;
+                position: fixed;
+                top: 20px;
+                left: 20px;
+                z-index: 101;
+                background: var(--primary);
+                color: white;
+                border: none;
+                padding: 10px 15px;
+                border-radius: 6px;
+                cursor: pointer;
+                font-size: 20px;
+            }
+
+            .code-tabs {
+                overflow-x: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+
+            .code-tab {
+                white-space: nowrap;
+            }
+        }
+
+        .mobile-menu-toggle {
+            display: none;
+        }
+
+        /* Scrollbar Styling */
+        .sidebar::-webkit-scrollbar {
+            width: 8px;
+        }
+
+        .sidebar::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .sidebar::-webkit-scrollbar-thumb {
+            background: var(--border);
+            border-radius: 4px;
+        }
+    </style>
+</head>
+<body>
+    <button class="mobile-menu-toggle" onclick="toggleSidebar()">☰</button>
+
+    <div class="docs-container">
+        <!-- Sidebar -->
+        <aside class="sidebar" id="sidebar">
+            <div class="sidebar-header">
+                <a href="/" class="logo">
+                    <span class="logo-icon">🎬</span>
+                    <span>VideoSplit</span>
+                </a>
+            </div>
+
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <div class="nav-section-title">Getting Started</div>
+                    <a href="#introduction" class="nav-item active">Introduction</a>
+                    <a href="#quickstart" class="nav-item">Quick Start</a>
+                    <a href="#authentication" class="nav-item">Authentication</a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">API Reference</div>
+                    <a href="#split-video" class="nav-item method">
+                        <span class="method-badge post">POST</span>
+                        Split Video
+                    </a>
+                    <a href="#download-segment" class="nav-item method">
+                        <span class="method-badge get">GET</span>
+                        Download Segment
+                    </a>
+                    <a href="#download-all" class="nav-item method">
+                        <span class="method-badge get">GET</span>
+                        Download All (ZIP)
+                    </a>
+                    <a href="#get-job" class="nav-item method">
+                        <span class="method-badge get">GET</span>
+                        Get Job Info
+                    </a>
+                    <a href="#delete-job" class="nav-item method">
+                        <span class="method-badge delete">DELETE</span>
+                        Delete Job
+                    </a>
+                </div>
+
+                <div class="nav-section">
+                    <div class="nav-section-title">Resources</div>
+                    <a href="#errors" class="nav-item">Error Handling</a>
+                    <a href="#best-practices" class="nav-item">Best Practices</a>
+                    <a href="#rate-limits" class="nav-item">Rate Limits</a>
+                </div>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main class="main-content">
+            <div class="content-area">
+                <a href="/" class="back-button">← Back to App</a>
+
+                <section id="introduction">
+                    <h1>API Documentation</h1>
+                    <p class="subtitle">
+                        The VideoSplit API allows you to programmatically split video files into equal-length segments. 
+                        Built on REST principles with predictable URLs and JSON responses.
+                    </p>
+
+                    <div class="callout info">
+                        <div class="callout-title">ℹ️ Base URL</div>
+                        <code id="baseUrl">http://your-server.com</code>
+                    </div>
+
+                    <h3>Supported Formats</h3>
+                    <p>MP4, MOV, AVI, MKV, FLV, WMV (max 500MB)</p>
+                </section>
+
+                <section id="quickstart">
+                    <h2>Quick Start</h2>
+                    <p>Get started with the VideoSplit API in minutes. Choose your language:</p>
+
+                    <div class="code-example-wrapper">
+                        <div class="code-tabs">
+                            <button class="code-tab active" onclick="showQuickStart('python')">Python</button>
+                            <button class="code-tab" onclick="showQuickStart('javascript')">JavaScript</button>
+                            <button class="code-tab" onclick="showQuickStart('nodejs')">Node.js</button>
+                            <button class="code-tab" onclick="showQuickStart('curl')">cURL</button>
+                            <button class="code-tab" onclick="showQuickStart('php')">PHP</button>
+                        </div>
+
+                        <div id="quickstart-python" class="code-content active">
+                            <pre><code>import requests
+
+# Upload and split video
+url = "http://your-server.com/api/v1/split"
+
+with open("video.mp4", "rb") as video_file:
+    files = {"file": video_file}
+    params = {"segment_duration": 30}
+    
+    response = requests.post(url, files=files, params=params)
+    result = response.json()
+    
+    print(f"Created {result['segments_count']} segments")
+    
+    # Download each segment
+    for segment in result["segments"]:
+        download_url = "http://your-server.com" + segment["download_url"]
+        seg_response = requests.get(download_url)
+        
+        with open(segment["filename"], "wb") as f:
+            f.write(seg_response.content)
+        
+        print(f"Downloaded: {segment['filename']}")</code></pre>
+                        </div>
+
+                        <div id="quickstart-javascript" class="code-content">
+                            <pre><code>// Get file from input element
+const file = document.getElementById('videoFile').files[0];
+
+// Create form data
+const formData = new FormData();
+formData.append('file', file);
+
+// Upload and split
+const url = 'http://your-server.com/api/v1/split?segment_duration=30';
+
+fetch(url, {
+    method: 'POST',
+    body: formData
+})
+.then(response => response.json())
+.then(result => {
+    console.log(`Created ${result.segments_count} segments`);
+    
+    // Download each segment
+    result.segments.forEach(segment => {
+        const link = document.createElement('a');
+        link.href = `http://your-server.com${segment.download_url}`;
+        link.download = segment.filename;
+        link.click();
+    });
+})
+.catch(error => console.error('Error:', error));</code></pre>
+                        </div>
+
+                        <div id="quickstart-nodejs" class="code-content">
+                            <pre><code>const fs = require('fs');
+const FormData = require('form-data');
+const axios = require('axios');
+
+async function splitVideo() {
+    // Create form data
+    const form = new FormData();
+    form.append('file', fs.createReadStream('video.mp4'));
+    
+    const url = 'http://your-server.com/api/v1/split?segment_duration=30';
+    
+    try {
+        // Upload and split
+        const response = await axios.post(url, form, {
+            headers: form.getHeaders()
+        });
+        
+        const result = response.data;
+        console.log(`Created ${result.segments_count} segments`);
+        
+        // Download each segment
+        for (const segment of result.segments) {
+            const downloadUrl = `http://your-server.com${segment.download_url}`;
+            const segResponse = await axios.get(downloadUrl, {
+                responseType: 'stream'
+            });
+            
+            segResponse.data.pipe(fs.createWriteStream(segment.filename));
+            console.log(`Downloaded: ${segment.filename}`);
+        }
+    } catch (error) {
+        console.error('Error:', error.message);
+    }
+}
+
+splitVideo();</code></pre>
+                        </div>
+
+                        <div id="quickstart-curl" class="code-content">
+                            <pre><code># Split video into 30-second segments
+curl -X POST "http://your-server.com/api/v1/split?segment_duration=30" \
+  -F "file=@video.mp4" \
+  -o response.json
+
+# View the response
+cat response.json
+
+# Download first segment (replace job_id from response)
+curl -O "http://your-server.com/api/v1/download/{job_id}/segment_000.mp4"
+
+# Download all segments as ZIP
+curl -O "http://your-server.com/api/v1/download-all/{job_id}"</code></pre>
+                        </div>
+
+                        <div id="quickstart-php" class="code-content">
+                            <pre><code>&lt;?php
+
+// API endpoint
+$url = "http://your-server.com/api/v1/split?segment_duration=30";
+
+// Prepare file upload
+$video_path = "video.mp4";
+$cfile = new CURLFile($video_path, 'video/mp4', basename($video_path));
+
+// Create POST data
+$data = array('file' => $cfile);
+
+// Initialize cURL
+$ch = curl_init();
+curl_setopt($ch, CURLOPT_URL, $url);
+curl_setopt($ch, CURLOPT_POST, 1);
+curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
+curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+
+// Execute request
+$response = curl_exec($ch);
+$http_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+curl_close($ch);
+
+if ($http_code == 200) {
+    $result = json_decode($response, true);
+    echo "Created " . $result['segments_count'] . " segments\n";
+    
+    // Download each segment
+    foreach ($result['segments'] as $segment) {
+        $download_url = "http://your-server.com" . $segment['download_url'];
+        $filename = $segment['filename'];
+        
+        $seg_data = file_get_contents($download_url);
+        file_put_contents($filename, $seg_data);
+        
+        echo "Downloaded: $filename\n";
+    }
+} else {
+    echo "Error: " . $response . "\n";
+}
+
+?&gt;</code></pre>
+                        </div>
+                    </div>
+
+                    <div class="callout success">
+                        <div class="callout-title">✓ That's it!</div>
+                        Your video is now split into segments. Check the response for download URLs.
+                    </div>
+                </section>
+
+                <section id="authentication">
+                    <h2>Authentication</h2>
+                    <p>Currently, the API does not require authentication. All endpoints are publicly accessible.</p>
+                </section>
+
+                <section id="split-video">
+                    <h2>Split Video</h2>
+                    <p>Upload a video file and split it into equal-length segments.</p>
+
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <span class="method-tag post">POST</span>
+                            <span class="endpoint-path">/api/v1/split</span>
+                        </div>
+
+                        <h4>Parameters</h4>
+                        <table class="params-table">
+                            <thead>
+                                <tr>
+                                    <th>Parameter</th>
+                                    <th>Type</th>
+                                    <th>Required</th>
+                                    <th>Description</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td><span class="param-name">file</span></td>
+                                    <td><span class="param-type">File</span></td>
+                                    <td><span class="param-required">Required</span></td>
+                                    <td>Video file to upload (multipart/form-data)</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="param-name">segment_duration</span></td>
+                                    <td><span class="param-type">Integer</span></td>
+                                    <td><span class="param-optional">Optional</span></td>
+                                    <td>Duration of each segment in seconds (1-3600, default: 60)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h4>Returns</h4>
+                        <p>Returns a job object with segment details.</p>
+
+                        <h4>Example Response</h4>
+                        <pre><code>{
+  <span class="code-string">"job_id"</span>: <span class="code-string">"a1b2c3d4-e5f6-7890-abcd-ef1234567890"</span>,
+  <span class="code-string">"status"</span>: <span class="code-string">"completed"</span>,
+  <span class="code-string">"segments_count"</span>: <span class="code-number">3</span>,
+  <span class="code-string">"segments"</span>: [
+    {
+      <span class="code-string">"filename"</span>: <span class="code-string">"segment_000.mp4"</span>,
+      <span class="code-string">"duration"</span>: <span class="code-number">30.0</span>,
+      <span class="code-string">"size_bytes"</span>: <span class="code-number">5242880</span>,
+      <span class="code-string">"download_url"</span>: <span class="code-string">"/api/v1/download/a1b2c3d4.../segment_000.mp4"</span>
+    }
+  ],
+  <span class="code-string">"original_filename"</span>: <span class="code-string">"video.mp4"</span>,
+  <span class="code-string">"total_duration"</span>: <span class="code-number">75.5</span>
+}</code></pre>
+                    </div>
+                </section>
+
+                <section id="download-segment">
+                    <h2>Download Segment</h2>
+                    <p>Download a specific video segment by job ID and filename.</p>
+
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <span class="method-tag get">GET</span>
+                            <span class="endpoint-path">/api/v1/download/{job_id}/{filename}</span>
+                        </div>
+
+                        <h4>Path Parameters</h4>
+                        <table class="params-table">
+                            <tbody>
+                                <tr>
+                                    <td><span class="param-name">job_id</span></td>
+                                    <td><span class="param-type">String</span></td>
+                                    <td><span class="param-required">Required</span></td>
+                                    <td>Job ID from split response</td>
+                                </tr>
+                                <tr>
+                                    <td><span class="param-name">filename</span></td>
+                                    <td><span class="param-type">String</span></td>
+                                    <td><span class="param-required">Required</span></td>
+                                    <td>Segment filename (e.g., segment_000.mp4)</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h4>Returns</h4>
+                        <p>Returns the video file as binary data.</p>
+                    </div>
+                </section>
+
+                <section id="download-all">
+                    <h2>Download All Segments</h2>
+                    <p>Download all segments for a job as a single ZIP file.</p>
+
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <span class="method-tag get">GET</span>
+                            <span class="endpoint-path">/api/v1/download-all/{job_id}</span>
+                        </div>
+
+                        <h4>Path Parameters</h4>
+                        <table class="params-table">
+                            <tbody>
+                                <tr>
+                                    <td><span class="param-name">job_id</span></td>
+                                    <td><span class="param-type">String</span></td>
+                                    <td><span class="param-required">Required</span></td>
+                                    <td>Job ID from split response</td>
+                                </tr>
+                            </tbody>
+                        </table>
+
+                        <h4>Returns</h4>
+                        <p>Returns a ZIP file containing all segments.</p>
+                    </div>
+                </section>
+
+                <section id="get-job">
+                    <h2>Get Job Information</h2>
+                    <p>Retrieve information about a processing job.</p>
+
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <span class="method-tag get">GET</span>
+                            <span class="endpoint-path">/api/v1/job/{job_id}</span>
+                        </div>
+
+                        <h4>Path Parameters</h4>
+                        <table class="params-table">
+                            <tbody>
+                                <tr>
+                                    <td><span class="param-name">job_id</span></td>
+                                    <td><span class="param-type">String</span></td>
+                                    <td><span class="param-required">Required</span></td>
+                                    <td>Job ID to retrieve</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </section>
+
+                <section id="delete-job">
+                    <h2>Delete Job</h2>
+                    <p>Permanently delete a job and all its segments.</p>
+
+                    <div class="endpoint-card">
+                        <div class="endpoint-header">
+                            <span class="method-tag delete">DELETE</span>
+                            <span class="endpoint-path">/api/v1/job/{job_id}</span>
+                        </div>
+
+                        <div class="callout warning">
+                            <div class="callout-title">⚠️ Warning</div>
+                            This action cannot be undone. All video segments will be permanently deleted.
+                        </div>
+                    </div>
+                </section>
+
+                <section id="errors">
+                    <h2>Error Handling</h2>
+                    <p>The API uses standard HTTP response codes to indicate success or failure.</p>
+
+                    <table class="params-table">
+                        <thead>
+                            <tr>
+                                <th>Code</th>
+                                <th>Status</th>
+                                <th>Description</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td><span class="param-name">200</span></td>
+                                <td>OK</td>
+                                <td>Request succeeded</td>
+                            </tr>
+                            <tr>
+                                <td><span class="param-name">400</span></td>
+                                <td>Bad Request</td>
+                                <td>Invalid parameters or file type</td>
+                            </tr>
+                            <tr>
+                                <td><span class="param-name">404</span></td>
+                                <td>Not Found</td>
+                                <td>Job or file doesn't exist</td>
+                            </tr>
+                            <tr>
+                                <td><span class="param-name">500</span></td>
+                                <td>Server Error</td>
+                                <td>Video processing failed</td>
+                            </tr>
+                        </tbody>
+                    </table>
+
+                    <h4>Error Response Format</h4>
+                    <pre><code>{
+  <span class="code-string">"detail"</span>: <span class="code-string">"Error message here"</span>
+}</code></pre>
+                </section>
+
+                <section id="best-practices">
+                    <h2>Best Practices</h2>
+                    
+                    <h4>Segment Duration</h4>
+                    <p>Choose appropriate segment durations for your use case:</p>
+                    <ul style="margin-left: 20px; color: var(--text-light); line-height: 2;">
+                        <li>5-30 seconds: Social media clips</li>
+                        <li>30-120 seconds: Short-form content</li>
+                        <li>2-10 minutes: Tutorial segments</li>
+                    </ul>
+
+                    <h4>Download Strategy</h4>
+                    <p>Use the ZIP download endpoint when you need multiple segments to save bandwidth and time.</p>
+
+                    <h4>Storage</h4>
+                    <p>Segments are kept for 24 hours. Download them promptly to avoid data loss.</p>
+                </section>
+
+                <section id="rate-limits">
+                    <h2>Rate Limits</h2>
+                    <p>Currently there are no rate limits, but please use the API responsibly.</p>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        // Set base URL
+        const baseUrl = window.location.origin;
+        document.getElementById('baseUrl').textContent = baseUrl;
+
+        // Replace URLs in code examples
+        document.addEventListener('DOMContentLoaded', function() {
+            const codeBlocks = document.querySelectorAll('code');
+            codeBlocks.forEach(block => {
+                block.innerHTML = block.innerHTML.replace(/http:\/\/your-server\.com/g, baseUrl);
+            });
+        });
+
+        // Quick Start tab switching
+        function showQuickStart(lang) {
+            // Remove active class from all tabs
+            document.querySelectorAll('.code-tab').forEach(tab => {
+                tab.classList.remove('active');
+            });
+            
+            // Remove active class from all content
+            document.querySelectorAll('.code-content').forEach(content => {
+                content.classList.remove('active');
+            });
+            
+            // Add active class to selected tab
+            event.target.classList.add('active');
+            
+            // Show selected content
+            document.getElementById(`quickstart-${lang}`).classList.add('active');
+        }
+
+        // Sidebar navigation
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.addEventListener('click', function(e) {
+                document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+                this.classList.add('active');
+            });
+        });
+
+        // Mobile menu
+        function toggleSidebar() {
+            document.getElementById('sidebar').classList.toggle('open');
+        }
+
+        // Smooth scroll
+        document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+            anchor.addEventListener('click', function (e) {
+                e.preventDefault();
+                const target = document.querySelector(this.getAttribute('href'));
+                if (target) {
+                    target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+                    if (window.innerWidth <= 768) {
+                        document.getElementById('sidebar').classList.remove('open');
+                    }
+                }
+            });
+        });
+    </script>
+</body>
+</html>

@@ -1,0 +1,189 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VideoSplit - Batch Video Cutter</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <!-- Tutorial Modal -->
+    <div class="modal" id="tutorialModal">
+        <div class="modal-content">
+            <span class="close-modal" id="closeModal">&times;</span>
+            <h2>🎬 Welcome to VideoSplit!</h2>
+            
+            <div class="tutorial-step">
+                <div class="step-number">1</div>
+                <div class="step-content">
+                    <h3>Choose Segment Duration</h3>
+                    <p>Use the slider to select how long each video segment should be (5 seconds to 10 minutes).</p>
+                </div>
+            </div>
+
+            <div class="tutorial-step">
+                <div class="step-number">2</div>
+                <div class="step-content">
+                    <h3>Upload Your Video</h3>
+                    <p>Drag & drop your video file or click the upload area to browse. Supports MP4, MOV, AVI, MKV (max 500MB).</p>
+                </div>
+            </div>
+
+            <div class="tutorial-step">
+                <div class="step-number">3</div>
+                <div class="step-content">
+                    <h3>Split & Download</h3>
+                    <p>Click "Split Video" and wait a moment. Once done, download individual segments or get them all as a ZIP file!</p>
+                </div>
+            </div>
+
+            <div class="tutorial-footer">
+                <label class="checkbox-label">
+                    <input type="checkbox" id="dontShowAgain">
+                    Don't show this again
+                </label>
+                <button class="primary-btn" id="gotItBtn">Got it!</button>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="header-content">
+                <div>
+                    <h1>🎬 VideoSplit</h1>
+                    <p class="subtitle">Split your videos into equal segments - fast and free</p>
+                </div>
+                <div class="header-buttons">
+                    <button class="help-btn" id="helpBtn">❓ How to Use</button>
+                    <a href="/documentation" class="doc-btn" target="_blank">📖 API Docs</a>
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Content -->
+        <main>
+            <!-- Upload Section -->
+            <section class="upload-section" id="uploadSection">
+                <!-- Duration Control (Now Always Visible) -->
+                <div class="duration-control" id="durationControl">
+                    <label for="segmentDuration">
+                        <span>Segment Duration:</span>
+                        <span class="duration-value" id="durationValue">60 seconds</span>
+                    </label>
+                    <input 
+                        type="range" 
+                        id="segmentDuration" 
+                        min="5" 
+                        max="600" 
+                        value="60" 
+                        step="5"
+                    >
+                    <div class="duration-hints">
+                        <span>5s</span>
+                        <span>5min</span>
+                        <span>10min</span>
+                    </div>
+                </div>
+
+                <div class="upload-area" id="uploadArea">
+                    <div class="upload-icon">📁</div>
+                    <h2>Drop your video here</h2>
+                    <p>or click to browse</p>
+                    <p class="file-hint">Supports: MP4, MOV, AVI, MKV (max 500MB)</p>
+                    <input type="file" id="fileInput" accept="video/*" hidden>
+                </div>
+
+                <!-- File Info (shown after upload) -->
+                <div class="file-info" id="fileInfo" style="display: none;">
+                    <div class="file-details">
+                        <span class="file-icon">🎥</span>
+                        <div class="file-text">
+                            <strong id="fileName">video.mp4</strong>
+                            <span id="fileSize">0 MB</span>
+                        </div>
+                        <button class="remove-btn" id="removeFile">✕</button>
+                    </div>
+                </div>
+
+                <!-- Split Button -->
+                <button class="split-btn" id="splitBtn" style="display: none;">
+                    Split Video
+                </button>
+            </section>
+
+            <!-- Processing Section -->
+            <section class="processing-section" id="processingSection" style="display: none;">
+                <div class="spinner"></div>
+                <h3>Processing your video...</h3>
+                <p>This may take a moment depending on video size</p>
+            </section>
+
+            <!-- Results Section -->
+            <section class="results-section" id="resultsSection" style="display: none;">
+                <div class="success-header">
+                    <div class="success-icon">✅</div>
+                    <h2>Split Complete!</h2>
+                </div>
+
+                <div class="video-info">
+                    <div class="info-item">
+                        <span class="info-label">Original File:</span>
+                        <span class="info-value" id="originalFileName">video.mp4</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Total Duration:</span>
+                        <span class="info-value" id="totalDuration">0s</span>
+                    </div>
+                    <div class="info-item">
+                        <span class="info-label">Segments Created:</span>
+                        <span class="info-value" id="segmentCount">0</span>
+                    </div>
+                </div>
+
+                <!-- Segments List -->
+                <div class="segments-container">
+                    <h3>Download Segments</h3>
+                    <div class="segments-list" id="segmentsList">
+                        <!-- Segments will be added here by JavaScript -->
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div class="result-actions">
+                    <button class="secondary-btn" id="downloadAllBtn">
+                        📦 Download All as ZIP
+                    </button>
+                    <button class="primary-btn" id="splitAnotherBtn">
+                        Split Another Video
+                    </button>
+                </div>
+            </section>
+
+            <!-- Error Section -->
+            <section class="error-section" id="errorSection" style="display: none;">
+                <div class="error-icon">❌</div>
+                <h2>Oops! Something went wrong</h2>
+                <p class="error-message" id="errorMessage">
+                    An error occurred while processing your video.
+                </p>
+                <button class="primary-btn" id="tryAgainBtn">
+                    Try Again
+                </button>
+            </section>
+        </main>
+
+        <!-- Footer -->
+        <footer>
+            <p>Built with ❤️ for your convenience</p>
+            <p>
+                <a href="/documentation" target="_blank">API Documentation</a> • 
+                <a href="#" id="footerHelpBtn">How to Use</a>
+            </p>
+        </footer>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>
