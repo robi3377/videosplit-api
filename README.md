@@ -159,4 +159,3 @@ CMD ["uvicorn", "app.main:app", "--host", "0.0.0.0", "--port", "8000"]
 
 - Built with [FastAPI](https://fastapi.tiangolo.com/)
 - Video processing by [FFmpeg](https://ffmpeg.org/)
-```
