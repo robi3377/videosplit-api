@@ -217,16 +217,21 @@ async function splitVideo() {
     // Show processing section with progress
     showSection('processing');
     
-    // Update processing message
+    // Update processing message with percentage in spinner AND progress bar
     const processingSection = document.getElementById('processingSection');
     processingSection.innerHTML = `
+    <div class="spinner-container">
         <div class="spinner"></div>
-        <h3>Uploading video...</h3>
-        <div style="width: 300px; margin: 20px auto; background: #ddd; border-radius: 10px; height: 30px; overflow: hidden;">
-            <div id="progressBar" style="width: 0%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px;">0%</div>
+        <div class="spinner-percentage" id="uploadPercentage">0%</div>
+    </div>
+    <h3 id="uploadTitle">Uploading video...</h3>
+    <div class="progress-bar-container">
+        <div class="progress-bar">
+            <div class="progress-bar-fill" id="progressBarFill" style="width: 0%"></div>
         </div>
-        <p id="uploadStatus">Preparing upload...</p>
-    `;
+    </div>
+    <p id="uploadStatus">Preparing upload...</p>
+`;
 
     const formData = new FormData();
     formData.append('file', selectedFile);
@@ -240,15 +245,22 @@ async function splitVideo() {
         // Track upload progress
         xhr.upload.addEventListener('progress', (e) => {
             if (e.lengthComputable) {
-                const percentComplete = (e.loaded / e.total) * 100;
-                const progressBar = document.getElementById('progressBar');
+                const percentComplete = Math.round((e.loaded / e.total) * 100);
+                const uploadPercentage = document.getElementById('uploadPercentage');
+                const progressBarFill = document.getElementById('progressBarFill');
                 const uploadStatus = document.getElementById('uploadStatus');
                 
-                if (progressBar) {
-                    progressBar.style.width = percentComplete + '%';
-                    progressBar.textContent = Math.round(percentComplete) + '%';
+                // Update percentage in spinner
+                if (uploadPercentage) {
+                    uploadPercentage.textContent = percentComplete + '%';
                 }
                 
+                // Update progress bar
+                if (progressBarFill) {
+                    progressBarFill.style.width = percentComplete + '%';
+                }
+                
+                // Update status text
                 if (uploadStatus) {
                     const uploadedMB = (e.loaded / (1024 * 1024)).toFixed(1);
                     const totalMB = (e.total / (1024 * 1024)).toFixed(1);
@@ -259,9 +271,22 @@ async function splitVideo() {
         
         // When upload completes, show processing message
         xhr.upload.addEventListener('load', () => {
+            const uploadTitle = document.getElementById('uploadTitle');
             const uploadStatus = document.getElementById('uploadStatus');
+            const uploadPercentage = document.getElementById('uploadPercentage');
+            const progressBarFill = document.getElementById('progressBarFill');
+            
+            if (uploadPercentage) {
+                uploadPercentage.textContent = '100%';
+            }
+            if (progressBarFill) {
+                progressBarFill.style.width = '100%';
+            }
+            if (uploadTitle) {
+                uploadTitle.textContent = 'Processing video...';
+            }
             if (uploadStatus) {
-                uploadStatus.textContent = 'Upload complete! Processing video...';
+                uploadStatus.textContent = 'Splitting into segments...';
             }
         });
         
