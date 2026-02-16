@@ -214,34 +214,77 @@ function resetUpload() {
 async function splitVideo() {
     if (!selectedFile) return;
 
-    // Show processing section
+    // Show processing section with progress
     showSection('processing');
+    
+    // Update processing message
+    const processingSection = document.getElementById('processingSection');
+    processingSection.innerHTML = `
+        <div class="spinner"></div>
+        <h3>Uploading video...</h3>
+        <div style="width: 300px; margin: 20px auto; background: #ddd; border-radius: 10px; height: 30px; overflow: hidden;">
+            <div id="progressBar" style="width: 0%; height: 100%; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); transition: width 0.3s; display: flex; align-items: center; justify-content: center; color: white; font-weight: bold; font-size: 14px;">0%</div>
+        </div>
+        <p id="uploadStatus">Preparing upload...</p>
+    `;
 
-    // Prepare form data
     const formData = new FormData();
     formData.append('file', selectedFile);
 
     const duration = segmentDuration.value;
 
     try {
-        // Make API request
-        const response = await fetch(`${API_BASE_URL}/api/v1/split?segment_duration=${duration}`, {
-            method: 'POST',
-            body: formData
-        });
-
-        if (!response.ok) {
-            const errorData = await response.json();
-            throw new Error(errorData.detail || 'Failed to process video');
-        }
-
-        const data = await response.json();
+        // Create XMLHttpRequest for progress tracking
+        const xhr = new XMLHttpRequest();
         
-        // Store job ID
-        currentJobId = data.job_id;
-
-        // Show results
-        displayResults(data);
+        // Track upload progress
+        xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+                const percentComplete = (e.loaded / e.total) * 100;
+                const progressBar = document.getElementById('progressBar');
+                const uploadStatus = document.getElementById('uploadStatus');
+                
+                if (progressBar) {
+                    progressBar.style.width = percentComplete + '%';
+                    progressBar.textContent = Math.round(percentComplete) + '%';
+                }
+                
+                if (uploadStatus) {
+                    const uploadedMB = (e.loaded / (1024 * 1024)).toFixed(1);
+                    const totalMB = (e.total / (1024 * 1024)).toFixed(1);
+                    uploadStatus.textContent = `Uploaded ${uploadedMB} MB of ${totalMB} MB`;
+                }
+            }
+        });
+        
+        // When upload completes, show processing message
+        xhr.upload.addEventListener('load', () => {
+            const uploadStatus = document.getElementById('uploadStatus');
+            if (uploadStatus) {
+                uploadStatus.textContent = 'Upload complete! Processing video...';
+            }
+        });
+        
+        // Handle completion
+        xhr.addEventListener('load', () => {
+            if (xhr.status === 200) {
+                const data = JSON.parse(xhr.responseText);
+                currentJobId = data.job_id;
+                displayResults(data);
+            } else {
+                const errorData = JSON.parse(xhr.responseText);
+                throw new Error(errorData.detail || 'Failed to process video');
+            }
+        });
+        
+        // Handle errors
+        xhr.addEventListener('error', () => {
+            throw new Error('Network error occurred');
+        });
+        
+        // Send request
+        xhr.open('POST', `${API_BASE_URL}/api/v1/split?segment_duration=${duration}`);
+        xhr.send(formData);
 
     } catch (error) {
         console.error('Error:', error);
