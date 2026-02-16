@@ -125,6 +125,13 @@ videosplit-api/
 │   │   └── video.py         # API endpoints
 │   └── services/
 │       └── ffmpeg_service.py # FFmpeg wrapper
+├── static/
+|   ├── index.html
+|   ├── style.css              (for main app)
+|   ├── app.js                 (for main app)
+|   ├── documentation.html
+|   └── documentation.css      
+|
 ├── uploads/                 # Temporary upload storage
 ├── outputs/                 # Processed video segments
 ├── requirements.txt
