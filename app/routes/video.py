@@ -1,5 +1,14 @@
-from fastapi import APIRouter, UploadFile, File, HTTPException, Query
+from datetime import datetime, timezone
+import time
+
+from fastapi import APIRouter, Depends, Request, UploadFile, File, HTTPException, Query
 from fastapi.responses import FileResponse, Response
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from app.saas_layer.db.base import get_db
+from app.saas_layer.db.models import Job, User
+from app.saas_layer.middleware.rate_limit import check_split_rate_limit
+from app.saas_layer.usage.service import check_usage_limit, record_usage
 from app.services.ffmpeg_service import FFmpegService
 from app.models.schemas import SplitResponse, SegmentInfo, ErrorResponse
 from pathlib import Path
@@ -23,37 +32,42 @@ OUTPUT_DIR.mkdir(exist_ok=True)
 
 @router.post("/split", response_model=SplitResponse)
 async def split_video(
+    request: Request,
     file: UploadFile = File(...),
-    segment_duration: int = Query(default=60, ge=1, le=3600)
+    segment_duration: int = Query(default=60, ge=1, le=3600),
+    current_user: User = Depends(check_split_rate_limit),
+    db: AsyncSession = Depends(get_db),
 ):
     """
-    Split a video into equal-length segments
-    
+    Split a video into equal-length segments.
+    Requires authentication (JWT Bearer token or API key).
+
     **Parameters:**
     - **file**: Video file to upload (mp4, mov, avi, etc.)
     - **segment_duration**: Duration of each segment in seconds (default: 60, min: 1, max: 3600)
-    
+
     **Returns:**
     - Job ID
     - List of segments with download URLs
     - Original video info
-    
+
     **Example:**
 ```
     POST /api/v1/split?segment_duration=30
+    Authorization: Bearer <token>
 ```
     """
-    
+
     # Step 1: Validate file type
     if not file.content_type or not file.content_type.startswith('video/'):
         raise HTTPException(
             status_code=400,
             detail="File must be a video. Supported formats: mp4, mov, avi, mkv, etc."
         )
-    
+
     # Step 2: Generate unique job ID
     job_id = str(uuid.uuid4())
-    
+
     # Step 3: Save uploaded file
     input_path = UPLOAD_DIR / f"{job_id}_{file.filename}"
     try:
@@ -65,22 +79,29 @@ async def split_video(
             status_code=500,
             detail=f"Failed to save uploaded file: {str(e)}"
         )
-    
+
+    file_size_mb = len(content) / (1024 * 1024)
+
     # Step 4: Create output directory for this job
     job_output_dir = OUTPUT_DIR / job_id
     job_output_dir.mkdir(exist_ok=True)
-    
+
     try:
         # Step 5: Get original video duration
         total_duration = FFmpegService.get_duration(str(input_path))
-        
-        # Step 6: Split the video
+
+        # Step 5b: Enforce monthly plan usage limit (raises 402 if exceeded)
+        await check_usage_limit(current_user, total_duration, db)
+
+        # Step 6: Split the video (track time for usage log)
+        processing_start = time.time()
         segments = FFmpegService.split_video(
             str(input_path),
             job_output_dir,
             segment_duration
         )
-        
+        processing_time = time.time() - processing_start
+
         # Step 7: Prepare segment information
         segment_infos = []
         for seg in segments:
@@ -90,11 +111,40 @@ async def split_video(
                 size_bytes=seg.stat().st_size,
                 download_url=f"/api/v1/download/{job_id}/{seg.name}"
             ))
-        
+
         # Step 8: Clean up input file (save space)
         input_path.unlink()
-        
-        # Step 9: Return response
+
+        # Step 9: Persist Job record in the database
+        auth_header = request.headers.get("authorization", "")
+        source = "api" if auth_header.startswith("vs_live_") else "web"
+
+        db_job = Job(
+            job_id=job_id,
+            user_id=current_user.id,
+            original_filename=file.filename,
+            segment_duration=segment_duration,
+            segments_count=len(segments),
+            total_duration=total_duration,
+            status="completed",
+            completed_at=datetime.now(timezone.utc),
+        )
+        db.add(db_job)
+
+        # Step 10: Record usage (updates monthly_minutes_used + creates UsageLog)
+        await record_usage(
+            user=current_user,
+            job_id=job_id,
+            video_duration_seconds=total_duration,
+            video_size_mb=file_size_mb,
+            segments_count=len(segments),
+            processing_time_seconds=processing_time,
+            source=source,
+            api_key_id=None,
+            db=db,
+        )
+
+        # Step 11: Return response
         return SplitResponse(
             job_id=job_id,
             status="completed",
@@ -103,22 +153,28 @@ async def split_video(
             original_filename=file.filename,
             total_duration=total_duration
         )
-        
+
+    except HTTPException:
+        # Pass through HTTPExceptions (402 plan limit, 429 rate limit, etc.)
+        input_path.unlink(missing_ok=True)
+        shutil.rmtree(job_output_dir, ignore_errors=True)
+        raise
+
     except subprocess.CalledProcessError as e:
         # Clean up on FFmpeg error
         input_path.unlink(missing_ok=True)
         shutil.rmtree(job_output_dir, ignore_errors=True)
-        
+
         raise HTTPException(
             status_code=500,
             detail=f"Video processing failed. Error: {e.stderr if hasattr(e, 'stderr') else str(e)}"
         )
-    
+
     except Exception as e:
         # Clean up on any other error
         input_path.unlink(missing_ok=True)
         shutil.rmtree(job_output_dir, ignore_errors=True)
-        
+
         raise HTTPException(
             status_code=500,
             detail=f"Unexpected error: {str(e)}"
