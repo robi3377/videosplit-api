@@ -1,49 +1,54 @@
-from fastapi import FastAPI
-from .db.base import engine, Base
 import logging
+
+from fastapi import FastAPI
+
+from app.saas_layer.core.redis_client import close_redis
+from app.saas_layer.db.base import Base, engine
 
 logger = logging.getLogger(__name__)
 
-async def init_db():
-    """
-    Initialize database tables
-    
-    This creates all tables defined in your models.
-    Think of it like creating folders in a filing cabinet.
-    """
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-    logger.info("✅ Database tables created successfully")
 
-async def register_saas_layer(app: FastAPI):
+async def register_saas_layer(app: FastAPI) -> None:
     """
-    Register SaaS layer with FastAPI app
-    
-    This is the MAIN ENTRYPOINT for integrating the SaaS layer
-    into your FastAPI application.
-    
-    Think of it like plugging in a module - one function call
-    and everything is wired up.
-    
-    Usage in main.py:
-        from app.saas_layer import register_saas_layer
-        
-        app = FastAPI()
-        
-        @app.on_event("startup")
-        async def startup():
-            await register_saas_layer(app)
+    Register the entire SaaS layer with the FastAPI application.
+    Called from app.on_event("startup").
+
+    - Ensures all DB tables exist (idempotent — already created by Alembic)
+    - Mounts all SaaS routers: auth, api-keys, billing, webhooks, admin
     """
-    logger.info("🚀 Registering SaaS layer...")
-    
-    # Step 1: Initialize database tables
-    await init_db()
-    
-    # TODO in later steps:
-    # Step 2: Register auth routes (Google OAuth, email login)
-    # Step 3: Register API key routes
-    # Step 4: Register subscription routes
-    # Step 5: Register admin routes
-    # Step 6: Register middleware (rate limiting, auth checking)
-    
-    logger.info("✅ SaaS layer registered successfully")
+    logger.info("Registering SaaS layer...")
+
+    # Verify DB tables exist (no-op if Alembic already ran migrations).
+    # Non-fatal: if DB is unreachable at startup, log a warning and continue.
+    # Individual requests will still fail with a DB error until it recovers.
+    try:
+        async with engine.begin() as conn:
+            await conn.run_sync(Base.metadata.create_all)
+        logger.info("Database tables verified")
+    except Exception as exc:
+        logger.warning(
+            "Database not reachable at startup (%s) — "
+            "ensure PostgreSQL is running before making requests",
+            exc.__class__.__name__,
+        )
+
+    # Import routers here (deferred) to avoid circular imports at module load time
+    from app.saas_layer.auth.router import router as auth_router
+    from app.saas_layer.apikeys.router import router as apikeys_router
+    from app.saas_layer.billing.router import router as billing_router
+    from app.saas_layer.billing.webhooks import router as webhooks_router
+    from app.saas_layer.admin.router import router as admin_router
+
+    app.include_router(auth_router)
+    app.include_router(apikeys_router)
+    app.include_router(billing_router)
+    app.include_router(webhooks_router)
+    app.include_router(admin_router)
+
+    logger.info("SaaS layer registered — routes: auth, api-keys, billing, webhooks, admin")
+
+
+async def shutdown_saas_layer() -> None:
+    """Close background connections. Called from app.on_event('shutdown')."""
+    await close_redis()
+    logger.info("SaaS layer shut down")
