@@ -28,6 +28,7 @@ body {
     color: var(--text);
     line-height: 1.6;
     font-size: 15px;
+    overflow-x: hidden; /* prevent horizontal scroll from wide code blocks */
 }
 
 /* ==================== */
@@ -146,12 +147,16 @@ body {
 .main-content {
     flex: 1;
     margin-left: var(--sidebar-width);
+    min-width: 0;           /* flex children can shrink below content size */
+    overflow-x: hidden;
 }
 
 .content-area {
     max-width: 1000px;
+    width: 100%;
     margin: 0 auto;
     padding: 60px 40px;
+    box-sizing: border-box;
 }
 
 /* ==================== */
@@ -380,6 +385,8 @@ pre {
     border-radius: 8px;
     padding: 24px;
     overflow-x: auto;
+    max-width: 100%;        /* never wider than its container */
+    box-sizing: border-box;
     margin: 0;
     color: #e3e8ee;
 }
@@ -502,17 +509,41 @@ a:hover {
 .mobile-menu-toggle {
     display: none;
     position: fixed;
-    top: 20px;
-    left: 20px;
-    z-index: 101;
+    top: 16px;
+    left: 16px;
+    z-index: 200;
     background: var(--primary);
     color: white;
     border: none;
-    padding: 12px 16px;
+    padding: 10px 14px;
     border-radius: 8px;
     cursor: pointer;
-    font-size: 20px;
+    font-size: 18px;
+    line-height: 1;
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    transition: background 0.2s;
+}
+
+.mobile-menu-toggle:hover {
+    background: var(--primary-dark);
+}
+
+/* ==================== */
+/* Sidebar Overlay      */
+/* ==================== */
+
+.sidebar-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
+    z-index: 150;
+    backdrop-filter: blur(2px);
+    -webkit-backdrop-filter: blur(2px);
+}
+
+.sidebar-overlay.active {
+    display: block;
 }
 
 /* ==================== */
@@ -533,101 +564,128 @@ a:hover {
 }
 
 /* ==================== */
-/* Mobile Responsive    */
+/* Tablet (≤1024px)     */
 /* ==================== */
 
-@media (max-width: 768px) {
-    /* Show mobile menu button */
+@media (max-width: 1024px) {
+    /* Show toggle button */
     .mobile-menu-toggle {
         display: block;
     }
 
-    /* Hide sidebar by default on mobile */
+    /* Sidebar off-screen by default */
     .sidebar {
         transform: translateX(-100%);
+        z-index: 160;
+        box-shadow: none;
     }
 
-    /* Show sidebar when open */
     .sidebar.open {
         transform: translateX(0);
+        box-shadow: 4px 0 24px rgba(0, 0, 0, 0.12);
     }
 
-    /* Remove margin for main content */
+    /* Content fills full width */
     .main-content {
         margin-left: 0;
     }
 
-    /* Adjust content padding */
+    /* Add top padding so content clears the toggle button */
     .content-area {
-        padding: 80px 20px 40px 20px;
+        padding: 80px 32px 60px;
+        max-width: 800px;
     }
 
-    /* Typography adjustments */
-    h1 {
-        font-size: 32px;
+    h1 { font-size: 34px; }
+    h2 { font-size: 26px; margin-top: 50px; }
+    h3 { font-size: 20px; }
+
+    .endpoint-card {
+        padding: 24px;
     }
 
-    h2 {
-        font-size: 24px;
-        margin-top: 40px;
+    .subtitle {
+        font-size: 16px;
+    }
+}
+
+/* ==================== */
+/* Phone (≤600px)       */
+/* ==================== */
+
+@media (max-width: 600px) {
+    .mobile-menu-toggle {
+        top: 12px;
+        left: 12px;
+        padding: 8px 12px;
+        font-size: 16px;
     }
 
-    h3 {
-        font-size: 18px;
+    .content-area {
+        padding: 70px 16px 48px;
+    }
+
+    h1 { font-size: 26px; letter-spacing: -0.3px; }
+    h2 { font-size: 22px; margin-top: 40px; margin-bottom: 16px; }
+    h3 { font-size: 18px; margin-top: 32px; }
+    h4 { font-size: 15px; }
+
+    .subtitle {
+        font-size: 15px;
+        margin-bottom: 28px;
     }
 
     /* Endpoint cards */
     .endpoint-card {
-        padding: 20px;
+        padding: 16px;
+        margin: 20px 0;
     }
 
     .endpoint-path {
-        font-size: 13px;
+        font-size: 12px;
     }
 
-    /* Tables */
-    .params-table {
-        font-size: 13px;
-    }
-
+    /* Parameters table */
     .params-table th,
     .params-table td {
         padding: 10px 8px;
+        font-size: 13px;
     }
 
     /* Code blocks */
     pre {
-        padding: 16px;
-        font-size: 12px;
+        padding: 14px;
+        border-radius: 6px;
     }
 
     code {
         font-size: 12px;
     }
 
-    /* Code tabs */
+    /* Code tabs — scrollable row of tabs */
+    .code-tabs {
+        gap: 2px;
+    }
+
     .code-tab {
-        padding: 8px 12px;
-        font-size: 12px;
+        padding: 8px 10px;
+        font-size: 11px;
+    }
+
+    /* Callouts */
+    .callout {
+        padding: 12px 14px;
     }
 
     /* Back button */
     .back-button {
-        margin-bottom: 20px;
-    }
-}
-
-/* Tablet adjustments */
-@media (max-width: 1024px) and (min-width: 769px) {
-    .content-area {
-        padding: 60px 30px;
+        padding: 8px 16px;
+        font-size: 13px;
+        margin-bottom: 28px;
     }
 
-    h1 {
-        font-size: 36px;
-    }
-
-    h2 {
-        font-size: 26px;
+    /* Reduce section spacing */
+    .code-example-wrapper {
+        margin: 20px 0;
     }
 }

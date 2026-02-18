@@ -10,6 +10,12 @@ class RegisterRequest(BaseModel):
     full_name: Optional[str] = Field(default=None, max_length=255)
 
 
+class RegistrationPendingResponse(BaseModel):
+    status: str = "verify_required"
+    email: str
+    message: str = "Check your email for a 6-digit verification code"
+
+
 class LoginRequest(BaseModel):
     email: EmailStr
     password: str

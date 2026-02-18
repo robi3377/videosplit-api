@@ -35,6 +35,14 @@ class Settings(BaseSettings):
     # App
     APP_BASE_URL: str = "http://localhost:8000"
 
+    # Email / SMTP (leave blank to disable email sending)
+    SMTP_HOST: str = ""
+    SMTP_PORT: int = 587
+    SMTP_USER: str = ""
+    SMTP_PASSWORD: str = ""
+    FROM_EMAIL: str = "noreply@videosplit.com"
+    ALERT_EMAIL: str = ""  # Admin alert recipient
+
     # Plan minute limits (-1 = unlimited stored as 999999 in DB)
     PLAN_LIMITS: dict = {
         "free": 100,
@@ -60,6 +68,10 @@ class Settings(BaseSettings):
     @property
     def stripe_webhooks_enabled(self) -> bool:
         return bool(self.STRIPE_WEBHOOK_SECRET)
+
+    @property
+    def email_enabled(self) -> bool:
+        return bool(self.SMTP_HOST and self.SMTP_USER and self.SMTP_PASSWORD)
 
 
 @lru_cache()

@@ -58,9 +58,17 @@
                 <div class="header-buttons">
                     <button class="help-btn" id="helpBtn">❓ How to Use</button>
                     <a href="/documentation" class="doc-btn" target="_blank">📖 API Docs</a>
+                    <a href="/static/dashboard.html" class="doc-btn" id="dashboardBtn" style="display:none">⚡ Dashboard</a>
+                    <a href="/static/auth.html" class="doc-btn" id="loginBtn">🔐 Sign In</a>
                 </div>
             </div>
         </header>
+
+        <!-- Auth Banner (shown when not logged in) -->
+        <div id="authBanner" style="display:none;background:#fef3c7;border-bottom:2px solid #f59e0b;padding:14px 30px;text-align:center;font-weight:500;color:#92400e">
+            🔐 <a href="/static/auth.html" style="color:#b45309;font-weight:700">Sign in</a> or <a href="/static/auth.html" style="color:#b45309;font-weight:700">create a free account</a> to upload videos.
+            <span id="usageBanner" style="display:none"> · <span id="usageBannerText"></span></span>
+        </div>
 
         <!-- Main Content -->
         <main>
@@ -87,12 +95,54 @@
                     </div>
                 </div>
 
+                <!-- Crop Options -->
+                <div class="crop-options" id="cropOptions">
+                    <div class="crop-row">
+                        <div class="crop-field">
+                            <label for="aspectRatioSelect">Aspect Ratio <span style="color:#9ca3af;font-weight:400">(optional)</span></label>
+                            <select id="aspectRatioSelect">
+                                <option value="">Original (no crop)</option>
+                                <option value="16:9">16:9 — Widescreen</option>
+                                <option value="4:3">4:3 — Standard</option>
+                                <option value="1:1">1:1 — Square</option>
+                                <option value="9:16">9:16 — Portrait / Stories</option>
+                                <option value="21:9">21:9 — Ultrawide</option>
+                                <option value="custom">Custom dimensions…</option>
+                            </select>
+                        </div>
+                        <div class="crop-field" id="cropPositionField">
+                            <label for="cropPositionSelect">Crop Position</label>
+                            <select id="cropPositionSelect">
+                                <option value="center">Center</option>
+                                <option value="top">Top</option>
+                                <option value="bottom">Bottom</option>
+                                <option value="left">Left</option>
+                                <option value="right">Right</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div class="crop-custom" id="cropCustom" style="display:none">
+                        <input type="number" id="customWidth" placeholder="Width (px)" min="1" max="7680">
+                        <span style="color:#9ca3af">×</span>
+                        <input type="number" id="customHeight" placeholder="Height (px)" min="1" max="4320">
+                    </div>
+                </div>
+
+                <!-- Multi-file queue (for Starter/Pro) -->
+                <div class="file-queue-section" id="fileQueueSection" style="display:none">
+                    <div class="queue-header">
+                        <span id="queueCount">0 files queued</span>
+                        <button class="queue-clear-btn" id="clearQueueBtn">Clear all</button>
+                    </div>
+                    <div id="fileQueue" class="file-queue"></div>
+                </div>
+
                 <div class="upload-area" id="uploadArea">
                     <div class="upload-icon">📁</div>
-                    <h2>Drop your video here</h2>
+                    <h2 id="uploadAreaTitle">Drop your video here</h2>
                     <p>or click to browse</p>
-                    <p class="file-hint">Supports: MP4, MOV, AVI, MKV (max 500MB)</p>
-                    <input type="file" id="fileInput" accept="video/*" hidden>
+                    <p class="file-hint" id="uploadAreaHint">Supports: MP4, MOV, AVI, MKV (max 500MB)</p>
+                    <input type="file" id="fileInput" accept="video/mp4,video/quicktime,video/x-msvideo,video/x-matroska" hidden>
                 </div>
 
                 <!-- File Info (shown after upload) -->
@@ -125,6 +175,7 @@
                 <div class="success-header">
                     <div class="success-icon">✅</div>
                     <h2>Split Complete!</h2>
+                    <p class="expiry-notice">⏰ Downloads expire in 24 hours</p>
                 </div>
 
                 <div class="video-info">
@@ -178,12 +229,35 @@
         <footer>
             <p>Built with ❤️ for your convenience</p>
             <p>
-                <a href="/documentation" target="_blank">API Documentation</a> • 
-                <a href="#" id="footerHelpBtn">How to Use</a>
+                <a href="/documentation" target="_blank">API Documentation</a> •
+                <a href="#" id="footerHelpBtn">How to Use</a> •
+                <a href="/static/terms.html">Terms</a> •
+                <a href="/static/privacy.html">Privacy</a> •
+                <a href="/static/refund-policy.html">Refunds</a>
             </p>
         </footer>
     </div>
 
+    <script src="utils.js"></script>
     <script src="app.js"></script>
+    <script>
+        // Show/hide auth UI based on login state
+        (function() {
+            if (isLoggedIn()) {
+                document.getElementById('loginBtn').style.display = 'none';
+                document.getElementById('dashboardBtn').style.display = '';
+                // Show usage info in banner
+                const user = getCachedUser();
+                if (user) {
+                    const isPro = ['pro','enterprise'].includes(user.plan_tier?.toLowerCase());
+                    const remaining = isPro ? '∞' : Math.max(0, user.monthly_minutes_limit - user.monthly_minutes_used).toFixed(1);
+                    document.getElementById('usageBannerText').textContent = `${remaining} minutes remaining this month (${planLabel(user.plan_tier)} plan)`;
+                    document.getElementById('usageBanner').style.display = '';
+                }
+            } else {
+                document.getElementById('authBanner').style.display = '';
+            }
+        })();
+    </script>
 </body>
 </html>

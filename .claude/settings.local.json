@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(python:*)",
+      "Bash(pip install:*)",
+      "Bash(pip show:*)",
+      "Bash(git add:*)",
+      "Bash(git commit:*)",
+      "Bash(alembic upgrade:*)",
+      "Bash(venv/Scripts/alembic current:*)",
+      "Bash(venv/Scripts/alembic upgrade:*)",
+      "Bash(venv/Scripts/python:*)"
+    ]
+  }
+}

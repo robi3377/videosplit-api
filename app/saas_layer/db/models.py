@@ -139,23 +139,55 @@ class UsageLog(Base):
 
 class Job(Base):
     __tablename__ = "jobs"
-    
+
     id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
     job_id: Mapped[str] = mapped_column(String(255), unique=True, index=True, nullable=False)
     user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    
+
     # Job details
     original_filename: Mapped[str] = mapped_column(String(500), nullable=False)
     segment_duration: Mapped[int] = mapped_column(Integer, nullable=False)
     segments_count: Mapped[int] = mapped_column(Integer, nullable=False)
     total_duration: Mapped[float] = mapped_column(nullable=False)
-    
+
+    # Crop info (optional)
+    aspect_ratio: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+    crop_position: Mapped[Optional[str]] = mapped_column(String(20), nullable=True)
+
     # Status
-    status: Mapped[str] = mapped_column(String(50), nullable=False, index=True)  # completed, failed
+    status: Mapped[str] = mapped_column(String(50), nullable=False, index=True)  # completed, failed, expired
     error_message: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
-    
+
     # Timestamps
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False, index=True)
     completed_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True)
-    
+    expires_at: Mapped[Optional[datetime]] = mapped_column(DateTime(timezone=True), nullable=True, index=True)
+
     user: Mapped["User"] = relationship("User", back_populates="jobs")
+
+
+class EmailVerification(Base):
+    __tablename__ = "email_verifications"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    code: Mapped[str] = mapped_column(String(6), nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    verified: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    user: Mapped["User"] = relationship("User")
+
+
+class PasswordReset(Base):
+    __tablename__ = "password_resets"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    email: Mapped[str] = mapped_column(String(255), nullable=False, index=True)
+    token_hash: Mapped[str] = mapped_column(String(255), nullable=False, unique=True, index=True)
+    expires_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
+    used: Mapped[bool] = mapped_column(Boolean, default=False)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc), nullable=False)
+
+    user: Mapped["User"] = relationship("User")

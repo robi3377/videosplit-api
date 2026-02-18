@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>402 — Quota Exceeded | VideoSplit</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+               background: #f9fafb; color: #1f2937; display: flex; align-items: center;
+               justify-content: center; min-height: 100vh; text-align: center; padding: 24px; }
+        .box { max-width: 520px; }
+        .code { font-size: 7em; font-weight: 900; color: #10b981; line-height: 1; margin-bottom: 8px; }
+        h1 { font-size: 1.6em; margin-bottom: 12px; }
+        p { color: #6b7280; margin-bottom: 16px; font-size: 1.05em; }
+        .emoji { font-size: 2.5em; margin-bottom: 16px; }
+        .highlight { background: linear-gradient(135deg,#667eea,#764ba2); color: #fff;
+                     border-radius: 12px; padding: 20px 24px; margin: 20px 0; }
+        .highlight h2 { font-size: 1.1em; margin-bottom: 4px; }
+        .highlight p { color: rgba(255,255,255,.85); margin: 0; }
+        .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+        .btn { padding: 12px 24px; border-radius: 10px; text-decoration: none; font-weight: 600;
+               font-size: .95em; transition: opacity .2s; display: inline-block; }
+        .btn:hover { opacity: .85; }
+        .btn-primary { background: linear-gradient(135deg,#667eea,#764ba2); color: #fff; }
+        .btn-secondary { background: #fff; color: #6b7280; border: 2px solid #e5e7eb; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <div class="emoji">📊</div>
+        <div class="code">402</div>
+        <h1>Monthly Quota Exceeded</h1>
+        <p>You've used all your minutes for this month.<br>Upgrade to keep splitting videos.</p>
+        <div class="highlight">
+            <h2>Upgrade to PRO</h2>
+            <p>Unlimited minutes · 60 splits/min · Priority support — $49/mo</p>
+        </div>
+        <div class="actions">
+            <a href="/static/plans.html" class="btn btn-primary">View Plans</a>
+            <a href="/static/dashboard.html" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+</body>
+</html>

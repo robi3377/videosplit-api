@@ -7,7 +7,8 @@
     <link rel="stylesheet" href="documentation.css">
 </head>
 <body>
-    <button class="mobile-menu-toggle" onclick="toggleSidebar()">☰</button>
+    <button class="mobile-menu-toggle" id="menuToggle" onclick="toggleSidebar()">☰</button>
+    <div class="sidebar-overlay" id="sidebarOverlay" onclick="toggleSidebar()"></div>
 
     <div class="docs-container">
         <!-- Sidebar -->
@@ -53,6 +54,7 @@
 
                 <div class="nav-section">
                     <div class="nav-section-title">Resources</div>
+                    <a href="#plans-comparison" class="nav-item">Plans &amp; Limits</a>
                     <a href="#errors" class="nav-item">Error Handling</a>
                     <a href="#best-practices" class="nav-item">Best Practices</a>
                     <a href="#rate-limits" class="nav-item">Rate Limits</a>
@@ -97,31 +99,36 @@
                         <div id="quickstart-python" class="code-content active">
                             <pre><code>import requests
 
+API_KEY = "vs_live_YOUR_API_KEY_HERE"  # From Dashboard → API Keys
+headers = {"Authorization": API_KEY}
+
 # Upload and split video
 url = "http://your-server.com/api/v1/split"
 
 with open("video.mp4", "rb") as video_file:
     files = {"file": video_file}
     params = {"segment_duration": 30}
-    
-    response = requests.post(url, files=files, params=params)
+
+    response = requests.post(url, files=files, params=params, headers=headers)
     result = response.json()
-    
+
     print(f"Created {result['segments_count']} segments")
-    
+
     # Download each segment
     for segment in result["segments"]:
         download_url = "http://your-server.com" + segment["download_url"]
         seg_response = requests.get(download_url)
-        
+
         with open(segment["filename"], "wb") as f:
             f.write(seg_response.content)
-        
+
         print(f"Downloaded: {segment['filename']}")</code></pre>
                         </div>
 
                         <div id="quickstart-javascript" class="code-content">
-                            <pre><code>// Get file from input element
+                            <pre><code>const API_KEY = 'vs_live_YOUR_API_KEY_HERE'; // From Dashboard → API Keys
+
+// Get file from input element
 const file = document.getElementById('videoFile').files[0];
 
 // Create form data
@@ -133,12 +140,13 @@ const url = 'http://your-server.com/api/v1/split?segment_duration=30';
 
 fetch(url, {
     method: 'POST',
+    headers: { 'Authorization': API_KEY },
     body: formData
 })
 .then(response => response.json())
 .then(result => {
     console.log(`Created ${result.segments_count} segments`);
-    
+
     // Download each segment
     result.segments.forEach(segment => {
         const link = document.createElement('a');
@@ -155,29 +163,29 @@ fetch(url, {
 const FormData = require('form-data');
 const axios = require('axios');
 
+const API_KEY = 'vs_live_YOUR_API_KEY_HERE'; // From Dashboard → API Keys
+
 async function splitVideo() {
     // Create form data
     const form = new FormData();
     form.append('file', fs.createReadStream('video.mp4'));
-    
+
     const url = 'http://your-server.com/api/v1/split?segment_duration=30';
-    
+
     try {
         // Upload and split
         const response = await axios.post(url, form, {
-            headers: form.getHeaders()
+            headers: { ...form.getHeaders(), 'Authorization': API_KEY }
         });
-        
+
         const result = response.data;
         console.log(`Created ${result.segments_count} segments`);
-        
+
         // Download each segment
         for (const segment of result.segments) {
             const downloadUrl = `http://your-server.com${segment.download_url}`;
-            const segResponse = await axios.get(downloadUrl, {
-                responseType: 'stream'
-            });
-            
+            const segResponse = await axios.get(downloadUrl, { responseType: 'stream' });
+
             segResponse.data.pipe(fs.createWriteStream(segment.filename));
             console.log(`Downloaded: ${segment.filename}`);
         }
@@ -190,8 +198,12 @@ splitVideo();</code></pre>
                         </div>
 
                         <div id="quickstart-curl" class="code-content">
-                            <pre><code># Split video into 30-second segments
+                            <pre><code># Replace with your API key from Dashboard → API Keys
+API_KEY="vs_live_YOUR_API_KEY_HERE"
+
+# Split video into 30-second segments
 curl -X POST "http://your-server.com/api/v1/split?segment_duration=30" \
+  -H "Authorization: $API_KEY" \
   -F "file=@video.mp4" \
   -o response.json
 
@@ -207,6 +219,8 @@ curl -O "http://your-server.com/api/v1/download-all/{job_id}"</code></pre>
 
                         <div id="quickstart-php" class="code-content">
                             <pre><code>&lt;?php
+
+$api_key = "vs_live_YOUR_API_KEY_HERE"; // From Dashboard → API Keys
 
 // API endpoint
 $url = "http://your-server.com/api/v1/split?segment_duration=30";
@@ -224,6 +238,7 @@ curl_setopt($ch, CURLOPT_URL, $url);
 curl_setopt($ch, CURLOPT_POST, 1);
 curl_setopt($ch, CURLOPT_POSTFIELDS, $data);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+curl_setopt($ch, CURLOPT_HTTPHEADER, ["Authorization: $api_key"]);
 
 // Execute request
 $response = curl_exec($ch);
@@ -260,7 +275,51 @@ if ($http_code == 200) {
 
                 <section id="authentication">
                     <h2>Authentication</h2>
-                    <p>Currently, the API does not require authentication. All endpoints are publicly accessible.</p>
+                    <p>All API endpoints require authentication. VideoSplit supports two methods:</p>
+
+                    <h4>1. JWT Bearer Token (Web / Short-lived)</h4>
+                    <p>Obtain a token via <code>POST /auth/login</code>, then include it in every request:</p>
+                    <pre><code>Authorization: Bearer &lt;your_access_token&gt;</code></pre>
+                    <p>Access tokens expire after 30 minutes. Refresh using:</p>
+                    <pre><code>POST /auth/refresh
+Content-Type: application/json
+
+{ "refresh_token": "&lt;your_refresh_token&gt;" }</code></pre>
+
+                    <h4>2. API Key (Programmatic / Long-lived)</h4>
+                    <p>Create an API key in your <a href="/static/dashboard.html#apikeys">dashboard</a>. Keys start with <code>vs_live_</code>.</p>
+                    <pre><code>Authorization: vs_live_&lt;your_api_key&gt;</code></pre>
+
+                    <div class="callout info">
+                        <div class="callout-title">ℹ️ Getting an API Key</div>
+                        1. <a href="/static/auth.html">Sign in</a> to your account.<br>
+                        2. Go to <strong>Dashboard → API Keys → Create New Key</strong>.<br>
+                        3. Copy the key immediately — it is shown only once.
+                    </div>
+
+                    <h4>Authentication Errors</h4>
+                    <table class="params-table">
+                        <thead><tr><th>Code</th><th>Reason</th><th>Fix</th></tr></thead>
+                        <tbody>
+                            <tr><td><span class="param-name">401</span></td><td>Missing or invalid token/key</td><td>Check your Authorization header</td></tr>
+                            <tr><td><span class="param-name">402</span></td><td>Monthly quota exceeded</td><td>Upgrade your plan at /static/plans.html</td></tr>
+                            <tr><td><span class="param-name">429</span></td><td>Rate limit exceeded</td><td>Reduce request frequency; see Rate Limits section</td></tr>
+                        </tbody>
+                    </table>
+                </section>
+
+                <section id="plans-comparison">
+                    <h2>Plan Comparison</h2>
+                    <table class="params-table">
+                        <thead><tr><th>Plan</th><th>Minutes/Month</th><th>Splits/Min</th><th>API Access</th><th>Price</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>FREE</strong></td><td>100</td><td>5</td><td>—</td><td>$0</td></tr>
+                            <tr><td><strong>STARTER</strong></td><td>1,000</td><td>20</td><td>✓</td><td>$19/mo</td></tr>
+                            <tr><td><strong>PRO</strong></td><td>Unlimited</td><td>60</td><td>✓</td><td>$49/mo</td></tr>
+                            <tr><td><strong>ENTERPRISE</strong></td><td>Unlimited</td><td>200</td><td>✓</td><td>Custom</td></tr>
+                        </tbody>
+                    </table>
+                    <p style="margin-top:12px">See the <a href="/static/plans.html">pricing page</a> for full details.</p>
                 </section>
 
                 <section id="split-video">
@@ -484,7 +543,17 @@ if ($http_code == 200) {
 
                 <section id="rate-limits">
                     <h2>Rate Limits</h2>
-                    <p>Currently there are no rate limits, but please use the API responsibly.</p>
+                    <p>Rate limits are enforced per user per minute on the split endpoint:</p>
+                    <table class="params-table">
+                        <thead><tr><th>Plan</th><th>Splits / Minute</th></tr></thead>
+                        <tbody>
+                            <tr><td><strong>FREE</strong></td><td>5</td></tr>
+                            <tr><td><strong>STARTER</strong></td><td>20</td></tr>
+                            <tr><td><strong>PRO</strong></td><td>60</td></tr>
+                            <tr><td><strong>ENTERPRISE</strong></td><td>200</td></tr>
+                        </tbody>
+                    </table>
+                    <p style="margin-top:12px">When exceeded, the API returns <code>429 Too Many Requests</code> with a <code>Retry-After: 60</code> header. Wait one minute before retrying.</p>
                 </section>
             </div>
         </main>
@@ -530,9 +599,14 @@ if ($http_code == 200) {
             });
         });
 
-        // Mobile menu
+        // Mobile/tablet menu
         function toggleSidebar() {
-            document.getElementById('sidebar').classList.toggle('open');
+            const sidebar = document.getElementById('sidebar');
+            const overlay = document.getElementById('sidebarOverlay');
+            const toggle  = document.getElementById('menuToggle');
+            const isOpen  = sidebar.classList.toggle('open');
+            overlay.classList.toggle('active', isOpen);
+            toggle.textContent = isOpen ? '✕' : '☰';
         }
 
         // Smooth scroll
@@ -542,8 +616,13 @@ if ($http_code == 200) {
                 const target = document.querySelector(this.getAttribute('href'));
                 if (target) {
                     target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-                    if (window.innerWidth <= 768) {
-                        document.getElementById('sidebar').classList.remove('open');
+                    if (window.innerWidth <= 1024) {
+                        const sidebar = document.getElementById('sidebar');
+                        const overlay = document.getElementById('sidebarOverlay');
+                        const toggle  = document.getElementById('menuToggle');
+                        sidebar.classList.remove('open');
+                        overlay.classList.remove('active');
+                        toggle.textContent = '☰';
                     }
                 }
             });

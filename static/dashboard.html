@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VideoSplit — Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body class="dash-body">
+
+<!-- ============ SIDEBAR ============ -->
+<aside class="dash-sidebar" id="dashSidebar">
+    <div class="dash-logo">
+        <span>🎬</span>
+        <span>VideoSplit</span>
+    </div>
+    <nav class="dash-nav">
+        <a href="#" class="dash-nav-item active" data-tab="overview">
+            <span class="nav-icon">📊</span> Overview
+        </a>
+        <a href="/static/index.html" class="dash-nav-item">
+            <span class="nav-icon">📤</span> Upload Video
+        </a>
+        <a href="#" class="dash-nav-item" data-tab="jobs">
+            <span class="nav-icon">🎬</span> Recent Jobs
+        </a>
+        <a href="#" class="dash-nav-item" data-tab="apikeys">
+            <span class="nav-icon">🔑</span> API Keys
+        </a>
+        <a href="#" class="dash-nav-item" data-tab="billing">
+            <span class="nav-icon">💳</span> Billing
+        </a>
+        <a href="#" class="dash-nav-item admin-link" id="adminNavLink" data-tab="admin-link" style="display:none">
+            <span class="nav-icon">⚙️</span> Admin
+        </a>
+    </nav>
+    <div class="dash-sidebar-footer">
+        <a href="/static/documentation.html" target="_blank" class="dash-nav-item">
+            <span class="nav-icon">📖</span> API Docs
+        </a>
+        <a href="/static/plans.html" class="dash-nav-item">
+            <span class="nav-icon">🚀</span> Pricing
+        </a>
+        <button class="dash-logout-btn" id="logoutBtn">
+            <span class="nav-icon">🚪</span> Logout
+        </button>
+    </div>
+</aside>
+
+<!-- ============ MAIN ============ -->
+<div class="dash-main">
+    <!-- Top bar -->
+    <header class="dash-topbar">
+        <button class="dash-menu-btn" id="sidebarToggle">☰</button>
+        <div class="dash-topbar-right">
+            <button class="theme-toggle-btn" id="themeToggle" title="Toggle dark mode">🌙</button>
+            <span class="user-plan-badge" id="topPlanBadge">FREE</span>
+            <span class="user-email" id="topUserEmail">loading…</span>
+        </div>
+    </header>
+
+    <!-- =========== OVERVIEW TAB =========== -->
+    <section class="dash-tab active" id="tab-overview">
+        <div class="dash-page-header">
+            <h2>Overview</h2>
+            <p id="welcomeMsg">Welcome back!</p>
+        </div>
+
+        <!-- Usage card -->
+        <div class="dash-card usage-card">
+            <div class="usage-header">
+                <div>
+                    <div class="usage-label">Monthly Usage</div>
+                    <div class="usage-numbers" id="usageNumbers">— / — minutes</div>
+                </div>
+                <span class="plan-badge" id="overviewPlanBadge">FREE</span>
+            </div>
+            <div class="usage-bar-track">
+                <div class="usage-bar-fill" id="usageBarFill" style="width:0%"></div>
+            </div>
+            <div class="usage-bar-labels">
+                <span id="usagePct">0% used</span>
+                <a href="#" class="upgrade-link" id="overviewUpgradeLink" style="display:none">Upgrade plan →</a>
+            </div>
+        </div>
+
+        <!-- Stats grid -->
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">🔑</div>
+                <div class="stat-value" id="statKeyCount">—</div>
+                <div class="stat-label">API keys</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">📶</div>
+                <div class="stat-value" id="statLastLogin">—</div>
+                <div class="stat-label">Last login</div>
+            </div>
+        </div>
+
+        <!-- Quick actions -->
+        <div class="dash-card">
+            <h3 style="margin-bottom:16px">Quick Actions</h3>
+            <div class="quick-actions">
+                <button class="primary-btn" style="margin:0" onclick="window.location.href='/static/index.html'">📤 Upload Video</button>
+                <button class="secondary-btn" style="margin:0" onclick="switchTab('apikeys')">🔑 Create API Key</button>
+                <button class="secondary-btn" style="margin:0" onclick="switchTab('billing')">💳 Manage Billing</button>
+            </div>
+        </div>
+
+        <!-- Danger Zone -->
+        <div class="dash-card" style="border:1px solid #fecaca">
+            <h3 style="color:#dc2626;margin-bottom:8px">Danger Zone</h3>
+            <p style="color:#6b7280;font-size:.9em;margin-bottom:16px">
+                Permanently delete your account, all API keys, usage history, and billing data.
+                This action <strong>cannot be undone</strong>.
+                If you have an active subscription, cancel it first to avoid future charges.
+            </p>
+            <button class="auth-btn" id="deleteAccountBtn"
+                style="width:auto;padding:10px 24px;background:#ef4444;font-size:.9em">
+                Delete My Account
+            </button>
+        </div>
+    </section>
+
+    <!-- =========== API KEYS TAB =========== -->
+    <section class="dash-tab" id="tab-apikeys">
+        <div class="dash-page-header">
+            <h2>API Keys</h2>
+            <p>Use API keys to access VideoSplit programmatically</p>
+        </div>
+
+        <div class="dash-card">
+            <div class="section-row">
+                <h3>Create New Key</h3>
+            </div>
+            <div class="create-key-form">
+                <input type="text" id="newKeyName" placeholder="Key name (e.g., My App, Production)" maxlength="100">
+                <button class="primary-btn" style="margin:0" id="createKeyBtn">Create Key</button>
+            </div>
+        </div>
+
+        <div class="dash-card">
+            <h3 style="margin-bottom:16px">Your API Keys</h3>
+            <div id="apiKeysList">
+                <div class="empty-state">Loading keys…</div>
+            </div>
+        </div>
+    </section>
+
+    <!-- =========== JOBS TAB =========== -->
+    <section class="dash-tab" id="tab-jobs">
+        <div class="dash-page-header">
+            <h2>Recent Jobs</h2>
+            <p>Your last 10 processed videos — files expire 24 hours after processing</p>
+        </div>
+
+        <!-- Filter bar -->
+        <div class="dash-card" style="padding:16px 20px">
+            <div class="jobs-filter-bar">
+                <button class="filter-btn active" data-filter="">All</button>
+                <button class="filter-btn" data-filter="completed">✅ Completed</button>
+                <button class="filter-btn" data-filter="failed">❌ Failed</button>
+                <button class="filter-btn" data-filter="expired">⏰ Expired</button>
+                <button class="jobs-refresh-btn" id="refreshJobsBtn" title="Refresh">↻</button>
+            </div>
+        </div>
+
+        <!-- Jobs list -->
+        <div class="dash-card" style="padding:0;overflow:hidden">
+            <div id="jobsTableContainer">
+                <div class="empty-state" style="padding:40px">Loading jobs…</div>
+            </div>
+        </div>
+
+        <!-- Pagination -->
+        <div class="jobs-pagination" id="jobsPagination" style="display:none">
+            <button class="secondary-btn" style="margin:0" id="jobsPrevBtn">← Previous</button>
+            <span id="jobsPageInfo" style="color:#6b7280;font-size:.9em"></span>
+            <button class="secondary-btn" style="margin:0" id="jobsNextBtn">Next →</button>
+        </div>
+    </section>
+
+    <!-- =========== BILLING TAB =========== -->
+    <section class="dash-tab" id="tab-billing">
+        <div class="dash-page-header">
+            <h2>Billing & Plans</h2>
+            <p>Manage your subscription</p>
+        </div>
+
+        <!-- Current plan -->
+        <div class="dash-card" id="currentPlanCard">
+            <h3 style="margin-bottom:16px">Current Plan</h3>
+            <div id="currentPlanInfo">Loading…</div>
+        </div>
+
+        <!-- Plan cards -->
+        <div class="dash-card">
+            <h3 style="margin-bottom:20px">Available Plans</h3>
+            <div class="plan-grid" id="planGrid"></div>
+        </div>
+    </section>
+
+</div><!-- end dash-main -->
+
+<!-- =========== API KEY CREATED MODAL =========== -->
+<div class="modal" id="keyCreatedModal">
+    <div class="modal-content">
+        <span class="close-modal" id="closeKeyModal">&times;</span>
+        <h2>🔑 API Key Created</h2>
+        <p style="color:#6b7280;margin-bottom:20px">Copy this key now — it won't be shown again.</p>
+        <div class="key-display" id="newKeyDisplay"></div>
+        <button class="primary-btn" id="copyKeyBtn" style="margin:16px auto 0">📋 Copy to Clipboard</button>
+        <p style="text-align:center;color:#9ca3af;font-size:.8em;margin-top:12px">Keep this key secret. Don't share or commit it.</p>
+    </div>
+</div>
+
+<!-- =========== DELETE CONFIRM MODAL =========== -->
+<div class="modal" id="deleteKeyModal">
+    <div class="modal-content" style="max-width:400px">
+        <h2 style="color:#ef4444">Delete API Key?</h2>
+        <p style="color:#6b7280;margin:16px 0">This action cannot be undone. Any apps using this key will stop working.</p>
+        <div style="display:flex;gap:12px;justify-content:flex-end">
+            <button class="secondary-btn" style="margin:0" id="cancelDeleteBtn">Cancel</button>
+            <button class="auth-btn" style="width:auto;padding:12px 24px;background:#ef4444" id="confirmDeleteBtn">Delete</button>
+        </div>
+    </div>
+</div>
+
+<!-- =========== EMAIL VERIFY BANNER =========== -->
+<div class="verify-banner" id="verifyBanner" style="display:none">
+    <span>⚠️ Please verify your email address to unlock all features.</span>
+    <a href="/static/verify-email.html" class="verify-banner-btn">Verify now →</a>
+</div>
+
+<!-- =========== JOB DETAIL MODAL =========== -->
+<div class="modal" id="jobDetailModal">
+    <div class="modal-content" style="max-width:600px">
+        <span class="close-modal" id="closeJobModal">&times;</span>
+        <h2 id="jobDetailTitle">Job Details</h2>
+        <div id="jobDetailBody" style="margin-top:16px"></div>
+    </div>
+</div>
+
+<script src="utils.js"></script>
+<script src="dashboard.js"></script>
+</body>
+</html>

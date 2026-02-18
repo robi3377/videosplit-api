@@ -1,0 +1,171 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VideoSplit — Pricing</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { padding:40px 20px; }
+        .plans-container { max-width:1000px; margin:0 auto; }
+        .plans-header { text-align:center; color:#fff; margin-bottom:48px; }
+        .plans-header h1 { font-size:2.6em; font-weight:700; margin-bottom:12px; }
+        .plans-header p { font-size:1.1em; opacity:.9; }
+        .plans-nav { background:rgba(255,255,255,.15); border-radius:12px; padding:14px 24px; display:flex; justify-content:space-between; align-items:center; margin-bottom:36px; }
+        .plans-nav a { color:#fff; text-decoration:none; font-weight:600; opacity:.9; }
+        .plans-nav a:hover { opacity:1; }
+        .plans-grid { display:grid; grid-template-columns:repeat(auto-fit,minmax(220px,1fr)); gap:20px; margin-bottom:48px; }
+        .plan-card { background:#fff; border-radius:16px; padding:32px 24px; position:relative; transition:transform .2s,box-shadow .2s; }
+        .plan-card:hover { transform:translateY(-4px); box-shadow:0 20px 40px rgba(0,0,0,.15); }
+        .plan-card.featured { border:3px solid #667eea; transform:translateY(-8px); box-shadow:0 20px 50px rgba(102,126,234,.3); }
+        .popular-badge { position:absolute; top:-14px; left:50%; transform:translateX(-50%);
+            background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; padding:4px 20px; border-radius:20px; font-size:.8em; font-weight:700; white-space:nowrap; }
+        .plan-tier { font-size:.75em; font-weight:700; letter-spacing:.1em; color:#667eea; margin-bottom:8px; }
+        .plan-price-big { font-size:2.8em; font-weight:700; color:#111; line-height:1; }
+        .plan-price-big span { font-size:.4em; color:#6b7280; font-weight:400; vertical-align:super; }
+        .plan-desc { color:#6b7280; font-size:.9em; margin:12px 0 20px; }
+        .plan-feature-list { list-style:none; margin:0 0 24px; padding:0; }
+        .plan-feature-list li { padding:6px 0; font-size:.9em; color:#374151; display:flex; align-items:center; gap:8px; border-bottom:1px solid #f3f4f6; }
+        .plan-feature-list li:last-child { border-bottom:none; }
+        .feat-check { color:#10b981; font-size:1em; flex-shrink:0; }
+        .plan-cta { display:block; width:100%; padding:14px; text-align:center; border-radius:10px; font-weight:600; font-size:.95em; cursor:pointer; text-decoration:none; transition:all .2s; border:none; }
+        .plan-cta.primary-cta { background:linear-gradient(135deg,#667eea,#764ba2); color:#fff; box-shadow:0 4px 15px rgba(102,126,234,.4); }
+        .plan-cta.primary-cta:hover { transform:translateY(-1px); box-shadow:0 6px 20px rgba(102,126,234,.5); }
+        .plan-cta.secondary-cta { background:#fff; color:#667eea; border:2px solid #667eea; }
+        .plan-cta.secondary-cta:hover { background:#f8f9ff; }
+        .plan-cta.outline-cta { background:transparent; color:#667eea; border:2px solid #e5e7eb; }
+        .plan-cta.outline-cta:hover { border-color:#667eea; }
+        .faq { background:#fff; border-radius:16px; padding:40px; margin-bottom:32px; }
+        .faq h2 { text-align:center; color:#111; margin-bottom:32px; font-size:1.6em; }
+        .faq-item { border-bottom:1px solid #f3f4f6; padding:20px 0; }
+        .faq-item:last-child { border-bottom:none; }
+        .faq-q { font-weight:600; color:#111; margin-bottom:8px; }
+        .faq-a { color:#6b7280; font-size:.95em; line-height:1.6; }
+        @media(max-width:600px) { .plans-grid { grid-template-columns:1fr; } .plan-card.featured { transform:none; } }
+    </style>
+</head>
+<body>
+<div class="plans-container">
+    <div class="plans-nav">
+        <a href="/">🎬 VideoSplit</a>
+        <div style="display:flex;gap:16px">
+            <a href="/static/auth.html" id="navAuthLink">Sign In</a>
+            <a href="/static/dashboard.html" id="navDashLink" style="display:none">Dashboard</a>
+        </div>
+    </div>
+
+    <div class="plans-header">
+        <h1>Simple, Transparent Pricing</h1>
+        <p>Start free. Upgrade when you need more.</p>
+    </div>
+
+    <div class="plans-grid">
+        <!-- FREE -->
+        <div class="plan-card">
+            <div class="plan-tier">FREE</div>
+            <div class="plan-price-big">$0</div>
+            <div class="plan-desc">Perfect for occasional use</div>
+            <ul class="plan-feature-list">
+                <li><span class="feat-check">✓</span> 100 minutes/month</li>
+                <li><span class="feat-check">✓</span> 5 splits per minute</li>
+                <li><span class="feat-check">✓</span> Web upload</li>
+                <li><span class="feat-check">✓</span> MP4, MOV, AVI, MKV</li>
+                <li><span class="feat-check">✓</span> ZIP download</li>
+            </ul>
+            <a href="/static/auth.html" class="plan-cta secondary-cta">Get Started Free</a>
+        </div>
+
+        <!-- STARTER -->
+        <div class="plan-card">
+            <div class="plan-tier">STARTER</div>
+            <div class="plan-price-big">$19<span>/mo</span></div>
+            <div class="plan-desc">For creators and small teams</div>
+            <ul class="plan-feature-list">
+                <li><span class="feat-check">✓</span> 1,000 minutes/month</li>
+                <li><span class="feat-check">✓</span> 20 splits per minute</li>
+                <li><span class="feat-check">✓</span> API access</li>
+                <li><span class="feat-check">✓</span> API key management</li>
+                <li><span class="feat-check">✓</span> Email support</li>
+            </ul>
+            <a href="/static/auth.html" class="plan-cta primary-cta" id="starterBtn">Get Starter</a>
+        </div>
+
+        <!-- PRO -->
+        <div class="plan-card featured">
+            <div class="popular-badge">Most Popular</div>
+            <div class="plan-tier">PRO</div>
+            <div class="plan-price-big">$49<span>/mo</span></div>
+            <div class="plan-desc">For power users and agencies</div>
+            <ul class="plan-feature-list">
+                <li><span class="feat-check">✓</span> Unlimited minutes</li>
+                <li><span class="feat-check">✓</span> 60 splits per minute</li>
+                <li><span class="feat-check">✓</span> Full API access</li>
+                <li><span class="feat-check">✓</span> Priority support</li>
+                <li><span class="feat-check">✓</span> Billing portal</li>
+            </ul>
+            <a href="/static/auth.html" class="plan-cta primary-cta" id="proBtn">Get Pro</a>
+        </div>
+
+        <!-- ENTERPRISE -->
+        <div class="plan-card">
+            <div class="plan-tier">ENTERPRISE</div>
+            <div class="plan-price-big" style="font-size:2em">Custom</div>
+            <div class="plan-desc">For large teams and custom needs</div>
+            <ul class="plan-feature-list">
+                <li><span class="feat-check">✓</span> Unlimited everything</li>
+                <li><span class="feat-check">✓</span> 200 splits per minute</li>
+                <li><span class="feat-check">✓</span> Dedicated support</li>
+                <li><span class="feat-check">✓</span> SLA guarantee</li>
+                <li><span class="feat-check">✓</span> Custom integrations</li>
+            </ul>
+            <a href="mailto:hello@videosplit.com" class="plan-cta outline-cta">Contact Sales</a>
+        </div>
+    </div>
+
+    <div class="faq">
+        <h2>Frequently Asked Questions</h2>
+        <div class="faq-item">
+            <div class="faq-q">What counts as a minute?</div>
+            <div class="faq-a">One minute = one minute of video duration processed. A 10-minute video uses 10 minutes of your quota, regardless of how many segments you split it into.</div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q">When does my quota reset?</div>
+            <div class="faq-a">Quotas reset on the 1st of each month at midnight UTC.</div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q">Can I cancel anytime?</div>
+            <div class="faq-a">Yes. Cancel from your billing portal anytime. You keep access until the end of your billing period.</div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q">What video formats are supported?</div>
+            <div class="faq-a">MP4, MOV, AVI, and MKV up to 500MB per file. FFmpeg handles the actual processing.</div>
+        </div>
+        <div class="faq-item">
+            <div class="faq-q">Do I need a credit card to start?</div>
+            <div class="faq-a">No. The FREE plan requires no payment info. Add a card only when you upgrade.</div>
+        </div>
+    </div>
+</div>
+
+<script src="utils.js"></script>
+<script>
+    // Show dashboard link if logged in
+    if (isLoggedIn()) {
+        document.getElementById('navAuthLink').style.display = 'none';
+        document.getElementById('navDashLink').style.display = '';
+
+        // Update upgrade buttons to go to dashboard billing
+        const user = getCachedUser();
+        if (user) {
+            ['starterBtn', 'proBtn'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    btn.href = '/static/dashboard.html#billing';
+                    btn.textContent = btn.textContent.replace('Get ', 'Upgrade to ');
+                }
+            });
+        }
+    }
+</script>
+</body>
+</html>

@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VideoSplit — Admin</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="dashboard.css">
+</head>
+<body class="dash-body">
+
+<aside class="dash-sidebar" id="dashSidebar">
+    <div class="dash-logo"><span>🎬</span><span>VideoSplit</span></div>
+    <nav class="dash-nav">
+        <a href="#" class="dash-nav-item active" data-tab="metrics"><span class="nav-icon">📊</span> Metrics</a>
+        <a href="#" class="dash-nav-item" data-tab="users"><span class="nav-icon">👥</span> Users</a>
+    </nav>
+    <div class="dash-sidebar-footer">
+        <a href="/static/dashboard.html" class="dash-nav-item"><span class="nav-icon">◀</span> Back to Dashboard</a>
+        <button class="dash-logout-btn" id="logoutBtn"><span class="nav-icon">🚪</span> Logout</button>
+    </div>
+</aside>
+
+<div class="dash-main">
+    <header class="dash-topbar">
+        <button class="dash-menu-btn" id="sidebarToggle">☰</button>
+        <div style="font-weight:700;color:#374151">⚙️ Admin Dashboard</div>
+        <div class="dash-topbar-right">
+            <span class="user-plan-badge" style="background:#ef4444">ADMIN</span>
+            <span class="user-email" id="topUserEmail">loading…</span>
+        </div>
+    </header>
+
+    <!-- =========== METRICS TAB =========== -->
+    <section class="dash-tab active" id="tab-metrics">
+        <div class="dash-page-header">
+            <h2>Platform Metrics</h2>
+            <p>Real-time platform overview</p>
+        </div>
+
+        <div class="stats-grid" id="metricsGrid">
+            <div class="stat-card"><div class="stat-icon">👥</div><div class="stat-value" id="mTotalUsers">—</div><div class="stat-label">Total users</div></div>
+            <div class="stat-card"><div class="stat-icon">💳</div><div class="stat-value" id="mActiveSubs">—</div><div class="stat-label">Active subscriptions</div></div>
+            <div class="stat-card"><div class="stat-icon">🎬</div><div class="stat-value" id="mJobsToday">—</div><div class="stat-label">Jobs today</div></div>
+            <div class="stat-card"><div class="stat-icon">📅</div><div class="stat-value" id="mJobsMonth">—</div><div class="stat-label">Jobs this month</div></div>
+            <div class="stat-card"><div class="stat-icon">⏱️</div><div class="stat-value" id="mMinutesMonth">—</div><div class="stat-label">Minutes processed (month)</div></div>
+        </div>
+
+        <div class="dash-card">
+            <h3 style="margin-bottom:16px">Users by Plan</h3>
+            <div id="planBreakdown" class="plan-breakdown"></div>
+        </div>
+    </section>
+
+    <!-- =========== USERS TAB =========== -->
+    <section class="dash-tab" id="tab-users">
+        <div class="dash-page-header">
+            <h2>User Management</h2>
+            <p>Search, filter, and manage users</p>
+        </div>
+
+        <div class="dash-card">
+            <div class="search-row">
+                <input type="text" id="userSearch" placeholder="Search by email or name…" class="search-input">
+                <select id="planFilter" class="search-select">
+                    <option value="">All plans</option>
+                    <option value="free">FREE</option>
+                    <option value="starter">STARTER</option>
+                    <option value="pro">PRO</option>
+                    <option value="enterprise">ENTERPRISE</option>
+                </select>
+                <button class="primary-btn" style="margin:0" id="searchBtn">Search</button>
+            </div>
+        </div>
+
+        <div class="dash-card">
+            <div id="usersTableContainer">
+                <table class="data-table" id="usersTable">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Email</th>
+                            <th>Name</th>
+                            <th>Plan</th>
+                            <th>Usage (min)</th>
+                            <th>Status</th>
+                            <th>Joined</th>
+                            <th>Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="usersTableBody"><tr><td colspan="8" class="empty-state">Loading…</td></tr></tbody>
+                </table>
+            </div>
+            <div class="pagination" id="pagination"></div>
+        </div>
+    </section>
+</div>
+
+<!-- User Edit Modal -->
+<div class="modal" id="userModal">
+    <div class="modal-content" style="max-width:500px">
+        <span class="close-modal" id="closeUserModal">&times;</span>
+        <h2>Edit User <span id="modalUserEmail" style="color:#667eea;font-size:.7em"></span></h2>
+
+        <div style="margin:20px 0">
+            <label style="display:block;font-size:.85em;font-weight:600;color:#374151;margin-bottom:6px">Plan Tier</label>
+            <select id="modalPlanSelect" style="width:100%;padding:10px;border:2px solid #e5e7eb;border-radius:8px;font-size:.95em">
+                <option value="free">FREE</option>
+                <option value="starter">STARTER</option>
+                <option value="pro">PRO</option>
+                <option value="enterprise">ENTERPRISE</option>
+            </select>
+        </div>
+
+        <div style="margin:20px 0">
+            <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-size:.9em;font-weight:600;color:#374151">
+                <input type="checkbox" id="modalAdminCheck" style="width:18px;height:18px;cursor:pointer">
+                Admin access
+            </label>
+        </div>
+
+        <div style="display:flex;gap:12px;justify-content:flex-end;margin-top:24px">
+            <button class="secondary-btn" style="margin:0" id="cancelUserModal">Cancel</button>
+            <button class="primary-btn" style="margin:0" id="saveUserBtn">Save Changes</button>
+        </div>
+    </div>
+</div>
+
+<script src="utils.js"></script>
+<script src="admin.js"></script>
+</body>
+</html>

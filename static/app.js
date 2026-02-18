@@ -4,6 +4,10 @@
 
 let selectedFile = null;
 let currentJobId = null;
+let fileQueue = [];  // Multi-file queue
+
+// Plan → max files per batch
+const MAX_FILES_BY_PLAN = { free: 1, starter: 5, pro: 10, enterprise: 20 };
 
 // API Base URL - change this when deploying
 const API_BASE_URL = window.location.origin;
@@ -63,11 +67,24 @@ uploadArea.addEventListener('click', () => {
     fileInput.click();
 });
 
-// File selected
+// File selected (supports multi-file for paid plans)
 fileInput.addEventListener('change', (e) => {
-    const file = e.target.files[0];
-    if (file) {
-        handleFileSelect(file);
+    const files = Array.from(e.target.files);
+    const plan = getCachedUser()?.plan_tier?.toLowerCase() || 'free';
+    const maxFiles = MAX_FILES_BY_PLAN[plan] || 1;
+
+    if (files.length > 1 && maxFiles > 1) {
+        // Multi-file mode
+        const toAdd = files.slice(0, maxFiles - fileQueue.length);
+        if (fileQueue.length + files.length > maxFiles) {
+            showToast(`Max ${maxFiles} files per batch on your plan`, 'warning');
+        }
+        toAdd.forEach(f => addToQueue(f));
+        renderQueue();
+        document.getElementById('fileQueueSection').style.display = '';
+        document.getElementById('splitBtn').style.display = 'block';
+    } else {
+        handleFileSelect(files[0]);
     }
 });
 
@@ -84,10 +101,17 @@ uploadArea.addEventListener('dragleave', () => {
 uploadArea.addEventListener('drop', (e) => {
     e.preventDefault();
     uploadArea.classList.remove('dragover');
-    
-    const file = e.dataTransfer.files[0];
-    if (file) {
-        handleFileSelect(file);
+    const files = Array.from(e.dataTransfer.files);
+    const plan = getCachedUser()?.plan_tier?.toLowerCase() || 'free';
+    const maxFiles = MAX_FILES_BY_PLAN[plan] || 1;
+    if (files.length > 1 && maxFiles > 1) {
+        const toAdd = files.slice(0, maxFiles - fileQueue.length);
+        toAdd.forEach(f => addToQueue(f));
+        renderQueue();
+        document.getElementById('fileQueueSection').style.display = '';
+        splitBtn.style.display = 'block';
+    } else if (files[0]) {
+        handleFileSelect(files[0]);
     }
 });
 
@@ -104,7 +128,9 @@ segmentDuration.addEventListener('input', (e) => {
 
 // Split button
 splitBtn.addEventListener('click', () => {
-    if (selectedFile) {
+    if (fileQueue.length > 0) {
+        processQueue();
+    } else if (selectedFile) {
         splitVideo();
     }
 });
@@ -169,9 +195,11 @@ function closeTutorialModal() {
 // ==================== //
 
 function handleFileSelect(file) {
-    // Validate file type
-    if (!file.type.startsWith('video/')) {
-        showError('Please select a valid video file.');
+    // Validate by extension (MIME type is unreliable)
+    const allowed = ['.mp4', '.mov', '.avi', '.mkv'];
+    const ext = '.' + (file.name.split('.').pop() || '').toLowerCase();
+    if (!allowed.includes(ext)) {
+        showError('Please select a valid video file (MP4, MOV, AVI, or MKV).');
         return;
     }
 
@@ -211,6 +239,14 @@ function resetUpload() {
 // Video Processing     //
 // ==================== //
 
+function getCropParams() {
+    const ar = document.getElementById('aspectRatioSelect')?.value || '';
+    const pos = document.getElementById('cropPositionSelect')?.value || 'center';
+    const cw = document.getElementById('customWidth')?.value || '';
+    const ch = document.getElementById('customHeight')?.value || '';
+    return { aspect_ratio: ar, crop_position: pos, custom_width: cw, custom_height: ch };
+}
+
 async function splitVideo() {
     if (!selectedFile) return;
 
@@ -235,6 +271,11 @@ async function splitVideo() {
 
     const formData = new FormData();
     formData.append('file', selectedFile);
+    const crop = getCropParams();
+    if (crop.aspect_ratio) formData.append('aspect_ratio', crop.aspect_ratio);
+    if (crop.crop_position) formData.append('crop_position', crop.crop_position);
+    if (crop.custom_width)  formData.append('custom_width', crop.custom_width);
+    if (crop.custom_height) formData.append('custom_height', crop.custom_height);
 
     const duration = segmentDuration.value;
 
@@ -296,19 +337,28 @@ async function splitVideo() {
                 const data = JSON.parse(xhr.responseText);
                 currentJobId = data.job_id;
                 displayResults(data);
+            } else if (xhr.status === 401) {
+                showError('Please sign in to upload videos.');
+            } else if (xhr.status === 402) {
+                showError('Monthly usage limit reached. Please upgrade your plan.');
+            } else if (xhr.status === 429) {
+                showError('Too many requests. Please wait a moment and try again.');
             } else {
-                const errorData = JSON.parse(xhr.responseText);
-                throw new Error(errorData.detail || 'Failed to process video');
+                let detail = 'Failed to process video';
+                try { detail = JSON.parse(xhr.responseText).detail; } catch(_) {}
+                showError(detail);
             }
         });
         
         // Handle errors
         xhr.addEventListener('error', () => {
-            throw new Error('Network error occurred');
+            showError('Network error. Check your connection and try again.');
         });
         
-        // Send request
+        // Send request (attach JWT if logged in)
         xhr.open('POST', `${API_BASE_URL}/api/v1/split?segment_duration=${duration}`);
+        const token = typeof getToken === 'function' ? getToken() : localStorage.getItem('vs_access_token');
+        if (token) xhr.setRequestHeader('Authorization', 'Bearer ' + token);
         xhr.send(formData);
 
     } catch (error) {
@@ -488,6 +538,131 @@ function formatDuration(seconds) {
 }
 
 // ==================== //
+// Crop Controls        //
+// ==================== //
+
+(function setupCropControls() {
+    const arSelect   = document.getElementById('aspectRatioSelect');
+    const posField   = document.getElementById('cropPositionField');
+    const customDiv  = document.getElementById('cropCustom');
+    if (!arSelect) return;
+
+    arSelect.addEventListener('change', () => {
+        const val = arSelect.value;
+        posField.style.display = val ? '' : 'none';
+        customDiv.style.display = val === 'custom' ? 'flex' : 'none';
+    });
+    posField.style.display = 'none'; // hidden until a ratio is chosen
+})();
+
+// ==================== //
+// Multi-file Queue     //
+// ==================== //
+
+function addToQueue(file) {
+    const allowed = ['.mp4', '.mov', '.avi', '.mkv'];
+    const ext = '.' + (file.name.split('.').pop() || '').toLowerCase();
+    if (!allowed.includes(ext)) { showToast(`${file.name} — unsupported format`, 'warning'); return; }
+    if (file.size > 500 * 1024 * 1024) { showToast(`${file.name} exceeds 500MB`, 'warning'); return; }
+    fileQueue.push({ id: Math.random().toString(36).slice(2), file, status: 'queued' });
+}
+
+function renderQueue() {
+    const container = document.getElementById('fileQueue');
+    const countEl   = document.getElementById('queueCount');
+    if (!container) return;
+    countEl.textContent = `${fileQueue.length} file${fileQueue.length !== 1 ? 's' : ''} queued`;
+    container.innerHTML = fileQueue.map(item => `
+        <div class="queue-item" data-id="${item.id}">
+            <span class="queue-name">${item.file.name}</span>
+            <span class="queue-size">${formatFileSize(item.file.size)}</span>
+            <span class="queue-status status-${item.status}">${
+                { queued: '⏳ Queued', uploading: '📤 Uploading', done: '✅ Done', failed: '❌ Failed' }[item.status] || item.status
+            }</span>
+            <button class="queue-remove-btn" onclick="removeFromQueue('${item.id}')">✕</button>
+        </div>`).join('');
+}
+
+function removeFromQueue(id) {
+    fileQueue = fileQueue.filter(f => f.id !== id);
+    renderQueue();
+    if (!fileQueue.length) {
+        document.getElementById('fileQueueSection').style.display = 'none';
+        splitBtn.style.display = 'none';
+    }
+}
+
+async function processQueue() {
+    if (!fileQueue.length) return;
+    splitBtn.disabled = true;
+    splitBtn.textContent = `Processing 0 / ${fileQueue.length}…`;
+
+    let done = 0;
+    for (const item of fileQueue) {
+        item.status = 'uploading';
+        renderQueue();
+        try {
+            const fd = new FormData();
+            fd.append('file', item.file);
+            const crop = getCropParams();
+            if (crop.aspect_ratio) fd.append('aspect_ratio', crop.aspect_ratio);
+            if (crop.crop_position) fd.append('crop_position', crop.crop_position);
+            if (crop.custom_width)  fd.append('custom_width', crop.custom_width);
+            if (crop.custom_height) fd.append('custom_height', crop.custom_height);
+            const duration = segmentDuration.value;
+
+            const res = await apiFetch(`/api/v1/split?segment_duration=${duration}`, { method: 'POST', body: fd });
+            if (res.ok) {
+                const data = await res.json();
+                item.status = 'done';
+                item.result = data;
+                done++;
+            } else {
+                item.status = 'failed';
+            }
+        } catch (_) {
+            item.status = 'failed';
+        }
+        splitBtn.textContent = `Processing ${done} / ${fileQueue.length}…`;
+        renderQueue();
+        await new Promise(r => setTimeout(r, 500)); // small delay between files
+    }
+
+    splitBtn.disabled = false;
+    splitBtn.textContent = 'Split Video';
+    const firstSuccess = fileQueue.find(f => f.status === 'done');
+    if (firstSuccess) {
+        currentJobId = firstSuccess.result.job_id;
+        displayResults(firstSuccess.result);
+    } else {
+        showError('All files failed to process. Please try again.');
+    }
+}
+
+// ==================== //
+// Upload multi attr    //
+// ==================== //
+
+(function updateFileInputMultiple() {
+    const user = getCachedUser();
+    const plan = user?.plan_tier?.toLowerCase() || 'free';
+    const maxFiles = MAX_FILES_BY_PLAN[plan] || 1;
+    if (maxFiles > 1 && fileInput) {
+        fileInput.setAttribute('multiple', 'multiple');
+        const hint = document.getElementById('uploadAreaHint');
+        if (hint) hint.textContent = `Supports: MP4, MOV, AVI, MKV · Up to ${maxFiles} files at once`;
+    }
+})();
+
+// Clear queue button
+document.getElementById('clearQueueBtn')?.addEventListener('click', () => {
+    fileQueue = [];
+    renderQueue();
+    document.getElementById('fileQueueSection').style.display = 'none';
+    splitBtn.style.display = 'none';
+});
+
+// ==================== //
 // Initialize           //
 // ==================== //
 
@@ -504,5 +679,3 @@ if (!localStorage.getItem('hideTutorial')) {
     }, 500);
 }
 
-console.log('VideoSplit initialized!');
-console.log('API Base URL:', API_BASE_URL);

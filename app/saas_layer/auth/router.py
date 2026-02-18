@@ -1,9 +1,15 @@
 import logging
+import os
+import random
+import secrets
+from datetime import datetime, timedelta, timezone
 from typing import Optional
 
 import httpx
 from fastapi import APIRouter, Depends, HTTPException, Request, status
 from fastapi.responses import RedirectResponse
+from pydantic import BaseModel
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.saas_layer.auth import service as auth_service
@@ -16,6 +22,7 @@ from app.saas_layer.auth.schemas import (
     LoginRequest,
     RefreshRequest,
     RegisterRequest,
+    RegistrationPendingResponse,
     TokenResponse,
     UpdateProfileRequest,
     UserResponse,
@@ -29,7 +36,7 @@ from app.saas_layer.core.security import (
     hash_password,
 )
 from app.saas_layer.db.base import get_db
-from app.saas_layer.db.models import User
+from app.saas_layer.db.models import EmailVerification, PasswordReset, User
 
 logger = logging.getLogger(__name__)
 router = APIRouter(prefix="/auth", tags=["auth"])
@@ -53,12 +60,12 @@ def _build_token_response(user: User) -> TokenResponse:
 # Email / Password
 # ---------------------------------------------------------------------------
 
-@router.post("/register", response_model=TokenResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/register", response_model=RegistrationPendingResponse, status_code=status.HTTP_202_ACCEPTED)
 async def register(
     body: RegisterRequest,
     db: AsyncSession = Depends(get_db),
 ):
-    """Register a new account with email and password."""
+    """Register a new account. Email verification is required before the account is usable."""
     try:
         user = await auth_service.register_user(
             email=body.email,
@@ -68,7 +75,95 @@ async def register(
         )
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail=str(exc))
+
+    # Send verification code immediately
+    now = datetime.now(timezone.utc)
+    code = f"{random.randint(0, 999999):06d}"
+    ev = EmailVerification(
+        user_id=user.id,
+        code=code,
+        expires_at=now + timedelta(minutes=15),
+        verified=False,
+    )
+    db.add(ev)
+
+    from app.services.email_service import send_verification_email
+    await send_verification_email(user.email, code)
+
+    return RegistrationPendingResponse(email=user.email)
+
+
+class CompleteRegistrationRequest(BaseModel):
+    email: str
+    code: str
+
+
+@router.post("/complete-registration", response_model=TokenResponse)
+async def complete_registration(
+    body: CompleteRegistrationRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Submit the 6-digit code sent after registration to activate the account and get tokens."""
+    user = await auth_service.get_user_by_email(body.email.lower().strip(), db)
+    if not user or user.email_verified:
+        raise HTTPException(status_code=400, detail="Invalid email or already verified")
+
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(EmailVerification).where(
+            EmailVerification.user_id == user.id,
+            EmailVerification.verified == False,  # noqa: E712
+            EmailVerification.expires_at > now,
+        ).order_by(EmailVerification.created_at.desc()).limit(1)
+    )
+    verification = result.scalar_one_or_none()
+
+    if not verification or verification.code != body.code.strip():
+        raise HTTPException(status_code=400, detail="Invalid or expired verification code")
+
+    verification.verified = True
+    user.email_verified = True
     return _build_token_response(user)
+
+
+class ResendRegistrationCodeRequest(BaseModel):
+    email: str
+
+
+@router.post("/resend-registration-code", status_code=status.HTTP_200_OK)
+async def resend_registration_code(
+    body: ResendRegistrationCodeRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Resend verification code for unverified accounts (no auth required). Rate-limited to 1/min."""
+    user = await auth_service.get_user_by_email(body.email.lower().strip(), db)
+    if not user or user.email_verified:
+        # Return success to avoid user enumeration
+        return {"message": "If that email exists and is unverified, a code has been sent"}
+
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(EmailVerification).where(
+            EmailVerification.user_id == user.id,
+            EmailVerification.created_at > now - timedelta(minutes=1),
+        ).limit(1)
+    )
+    if result.scalar_one_or_none():
+        raise HTTPException(status_code=429, detail="Please wait 1 minute before requesting another code")
+
+    code = f"{random.randint(0, 999999):06d}"
+    ev = EmailVerification(
+        user_id=user.id,
+        code=code,
+        expires_at=now + timedelta(minutes=15),
+        verified=False,
+    )
+    db.add(ev)
+
+    from app.services.email_service import send_verification_email
+    await send_verification_email(user.email, code)
+
+    return {"message": "Verification code sent"}
 
 
 @router.post("/login", response_model=TokenResponse)
@@ -170,6 +265,15 @@ async def change_password(
             detail="Current password is incorrect",
         )
     current_user.hashed_password = hash_password(body.new_password)
+
+
+@router.delete("/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_account(
+    current_user: User = Depends(get_current_user_jwt_only),
+    db: AsyncSession = Depends(get_db),
+):
+    """Permanently delete the current account and all associated data."""
+    await db.delete(current_user)
 
 
 # ---------------------------------------------------------------------------
@@ -276,3 +380,172 @@ async def google_callback(
         f"&refresh_token={token_resp.refresh_token}"
     )
     return RedirectResponse(url=redirect_url)
+
+
+# ---------------------------------------------------------------------------
+# Email Verification
+# ---------------------------------------------------------------------------
+
+class VerifyEmailRequest(BaseModel):
+    code: str
+
+
+class ResendVerificationRequest(BaseModel):
+    pass  # uses current auth token
+
+
+@router.post("/verify-email", status_code=status.HTTP_200_OK)
+async def verify_email(
+    body: VerifyEmailRequest,
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Submit a 6-digit verification code to verify the user's email."""
+    if current_user.email_verified:
+        return {"message": "Email already verified"}
+
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(EmailVerification).where(
+            EmailVerification.user_id == current_user.id,
+            EmailVerification.verified == False,  # noqa: E712
+            EmailVerification.expires_at > now,
+        ).order_by(EmailVerification.created_at.desc()).limit(1)
+    )
+    verification = result.scalar_one_or_none()
+
+    if not verification or verification.code != body.code.strip():
+        raise HTTPException(status_code=400, detail="Invalid or expired verification code")
+
+    verification.verified = True
+    current_user.email_verified = True
+    return {"message": "Email verified successfully"}
+
+
+@router.post("/resend-verification", status_code=status.HTTP_200_OK)
+async def resend_verification(
+    current_user: User = Depends(get_current_active_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """Send a new verification code. Rate-limited to once per minute."""
+    if current_user.email_verified:
+        return {"message": "Email already verified"}
+
+    now = datetime.now(timezone.utc)
+    # Rate limit: one resend per minute
+    result = await db.execute(
+        select(EmailVerification).where(
+            EmailVerification.user_id == current_user.id,
+            EmailVerification.created_at > now - timedelta(minutes=1),
+        ).limit(1)
+    )
+    recent = result.scalar_one_or_none()
+    if recent:
+        raise HTTPException(status_code=429, detail="Please wait 1 minute before requesting another code")
+
+    code = f"{random.randint(0, 999999):06d}"
+    ev = EmailVerification(
+        user_id=current_user.id,
+        code=code,
+        expires_at=now + timedelta(minutes=15),
+        verified=False,
+    )
+    db.add(ev)
+
+    from app.services.email_service import send_verification_email
+    await send_verification_email(current_user.email, code)
+
+    return {"message": "Verification code sent"}
+
+
+# ---------------------------------------------------------------------------
+# Password Reset
+# ---------------------------------------------------------------------------
+
+class ForgotPasswordRequest(BaseModel):
+    email: str
+
+
+class ResetPasswordRequest(BaseModel):
+    token: str
+    new_password: str
+
+
+@router.post("/forgot-password", status_code=status.HTTP_200_OK)
+async def forgot_password(
+    body: ForgotPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Request a password reset link. Always returns 200 to avoid email enumeration."""
+    # Rate limit check (3 per hour per email) — using DB count
+    now = datetime.now(timezone.utc)
+    result = await db.execute(
+        select(PasswordReset).where(
+            PasswordReset.email == body.email.lower().strip(),
+            PasswordReset.created_at > now - timedelta(hours=1),
+        )
+    )
+    recent_count = len(result.scalars().all())
+    if recent_count >= 3:
+        # Silently return success to avoid timing attacks
+        return {"message": "If that email exists, a reset link has been sent"}
+
+    user = await auth_service.get_user_by_email(body.email.lower().strip(), db)
+    if user and user.hashed_password:  # Only email/password accounts can reset
+        token = secrets.token_urlsafe(32)
+        token_hash = hash_password(token)  # reuse bcrypt hasher
+        reset = PasswordReset(
+            user_id=user.id,
+            email=user.email,
+            token_hash=token_hash,
+            expires_at=now + timedelta(hours=1),
+            used=False,
+        )
+        db.add(reset)
+        reset_url = f"{settings.APP_BASE_URL}/static/reset-password.html?token={token}"
+        from app.services.email_service import send_password_reset_email
+        await send_password_reset_email(user.email, reset_url)
+
+    return {"message": "If that email exists, a reset link has been sent"}
+
+
+@router.post("/reset-password", status_code=status.HTTP_200_OK)
+async def reset_password(
+    body: ResetPasswordRequest,
+    db: AsyncSession = Depends(get_db),
+):
+    """Submit a reset token + new password to update the account password."""
+    if len(body.new_password) < 8:
+        raise HTTPException(status_code=400, detail="Password must be at least 8 characters")
+
+    now = datetime.now(timezone.utc)
+    # Find matching, unexpired, unused reset records for the token
+    result = await db.execute(
+        select(PasswordReset).where(
+            PasswordReset.expires_at > now,
+            PasswordReset.used == False,  # noqa: E712
+        )
+    )
+    resets = result.scalars().all()
+
+    matched = None
+    for r in resets:
+        if verify_password(body.token, r.token_hash):
+            matched = r
+            break
+
+    if not matched:
+        raise HTTPException(status_code=400, detail="Invalid or expired reset token")
+
+    user_result = await db.execute(select(User).where(User.id == matched.user_id))
+    user = user_result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=400, detail="User not found")
+
+    user.hashed_password = hash_password(body.new_password)
+    matched.used = True
+
+    from app.services.email_service import send_password_changed_email
+    await send_password_changed_email(user.email)
+
+    return {"message": "Password reset successfully"}

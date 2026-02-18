@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Verify Email — VideoSplit</title>
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body { display: flex; align-items: center; justify-content: center; min-height: 100vh;
+               background: linear-gradient(135deg,#667eea 0%,#764ba2 100%); padding: 20px; }
+        .card { background: #fff; border-radius: 20px; padding: 48px 40px; max-width: 440px;
+                width: 100%; box-shadow: 0 20px 60px rgba(0,0,0,.2); text-align: center; }
+        .icon { font-size: 3em; margin-bottom: 16px; }
+        h1 { font-size: 1.7em; font-weight: 800; margin-bottom: 8px; color: #1f2937; }
+        .subtitle { color: #6b7280; margin-bottom: 32px; font-size: .95em; line-height: 1.5; }
+        .email-display { background: #f3f4f6; border-radius: 8px; padding: 10px 16px;
+                         font-weight: 600; color: #374151; margin-bottom: 28px; font-size: .9em; }
+        .code-inputs { display: flex; gap: 10px; justify-content: center; margin-bottom: 28px; }
+        .code-inputs input { width: 48px; height: 56px; text-align: center; font-size: 1.5em;
+                             font-weight: 700; border: 2px solid #e5e7eb; border-radius: 10px;
+                             outline: none; transition: border-color .2s; }
+        .code-inputs input:focus { border-color: #667eea; }
+        .code-inputs input.filled { border-color: #10b981; background: #f0fdf4; }
+        .btn { width: 100%; padding: 14px; border: none; border-radius: 12px; font-size: 1em;
+               font-weight: 700; cursor: pointer; transition: all .2s; margin-bottom: 12px; }
+        .btn-primary { background: linear-gradient(135deg,#667eea,#764ba2); color: #fff; }
+        .btn-primary:hover { opacity: .9; transform: translateY(-1px); }
+        .btn-primary:disabled { opacity: .6; cursor: not-allowed; transform: none; }
+        .btn-ghost { background: none; color: #667eea; font-size: .9em; padding: 8px; }
+        .btn-ghost:hover { text-decoration: underline; }
+        .error-msg { color: #ef4444; font-size: .85em; margin-bottom: 12px; display: none; }
+        .success-msg { color: #10b981; font-size: .85em; margin-bottom: 12px; display: none; }
+        .timer { color: #9ca3af; font-size: .85em; margin-top: 4px; }
+    </style>
+</head>
+<body>
+    <div class="card">
+        <div class="icon">📧</div>
+        <h1>Check your email</h1>
+        <p class="subtitle">We sent a 6-digit code to</p>
+        <div class="email-display" id="emailDisplay">your email</div>
+
+        <div class="code-inputs">
+            <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" id="d0" autofocus>
+            <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" id="d1">
+            <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" id="d2">
+            <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" id="d3">
+            <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" id="d4">
+            <input type="text" maxlength="1" inputmode="numeric" pattern="[0-9]" id="d5">
+        </div>
+
+        <div class="error-msg" id="errorMsg"></div>
+        <div class="success-msg" id="successMsg"></div>
+
+        <button class="btn btn-primary" id="verifyBtn" disabled>Verify Email</button>
+        <button class="btn btn-ghost" id="resendBtn">Resend code</button>
+        <div class="timer" id="timerDisplay"></div>
+        <button class="btn btn-ghost" onclick="logout()" style="color:#9ca3af;margin-top:8px">Sign out</button>
+    </div>
+
+    <script src="utils.js"></script>
+    <script>
+        requireAuth();
+
+        const digits = Array.from({length: 6}, (_, i) => document.getElementById('d' + i));
+        const verifyBtn = document.getElementById('verifyBtn');
+        const errorMsg  = document.getElementById('errorMsg');
+        const successMsg = document.getElementById('successMsg');
+        const resendBtn = document.getElementById('resendBtn');
+        const timerEl  = document.getElementById('timerDisplay');
+        let resendCooldown = 0;
+
+        // Show user email
+        (async () => {
+            try {
+                const user = await apiJSON('/auth/me');
+                document.getElementById('emailDisplay').textContent = user.email;
+                if (user.email_verified) window.location.href = '/static/dashboard.html';
+                // Auto-send first code
+                await sendCode(true);
+            } catch (_) { logout(); }
+        })();
+
+        // Digit input logic
+        digits.forEach((inp, i) => {
+            inp.addEventListener('input', e => {
+                const val = e.target.value.replace(/\D/g, '');
+                inp.value = val ? val[val.length - 1] : '';
+                inp.classList.toggle('filled', !!inp.value);
+                if (val && i < 5) digits[i + 1].focus();
+                checkComplete();
+            });
+            inp.addEventListener('keydown', e => {
+                if (e.key === 'Backspace' && !inp.value && i > 0) {
+                    digits[i - 1].focus();
+                    digits[i - 1].value = '';
+                    digits[i - 1].classList.remove('filled');
+                    checkComplete();
+                }
+            });
+            inp.addEventListener('paste', e => {
+                const text = (e.clipboardData || window.clipboardData).getData('text').replace(/\D/g,'');
+                if (text.length === 6) {
+                    digits.forEach((d, j) => { d.value = text[j] || ''; d.classList.toggle('filled', !!d.value); });
+                    digits[5].focus();
+                    checkComplete();
+                }
+                e.preventDefault();
+            });
+        });
+
+        function checkComplete() {
+            const code = digits.map(d => d.value).join('');
+            verifyBtn.disabled = code.length !== 6;
+        }
+
+        function getCode() { return digits.map(d => d.value).join(''); }
+
+        function showError(msg) {
+            errorMsg.textContent = msg; errorMsg.style.display = 'block';
+            successMsg.style.display = 'none';
+        }
+
+        function showSuccess(msg) {
+            successMsg.textContent = msg; successMsg.style.display = 'block';
+            errorMsg.style.display = 'none';
+        }
+
+        verifyBtn.addEventListener('click', async () => {
+            verifyBtn.disabled = true; verifyBtn.textContent = 'Verifying…';
+            errorMsg.style.display = 'none';
+            try {
+                await apiJSON('/auth/verify-email', { method: 'POST', body: JSON.stringify({ code: getCode() }) });
+                showSuccess('Email verified! Redirecting…');
+                setTimeout(() => window.location.href = '/static/dashboard.html', 1200);
+            } catch (err) {
+                showError(err.detail || 'Invalid code. Please try again.');
+                verifyBtn.disabled = false; verifyBtn.textContent = 'Verify Email';
+                digits.forEach(d => { d.value = ''; d.classList.remove('filled'); });
+                digits[0].focus();
+            }
+        });
+
+        async function sendCode(silent = false) {
+            if (resendCooldown > 0) return;
+            try {
+                await apiJSON('/auth/resend-verification', { method: 'POST' });
+                if (!silent) showSuccess('New code sent!');
+                startCooldown(60);
+            } catch (err) {
+                if (!silent) showError(err.detail || 'Failed to send code');
+            }
+        }
+
+        function startCooldown(secs) {
+            resendCooldown = secs;
+            resendBtn.disabled = true;
+            const tick = () => {
+                if (resendCooldown <= 0) { resendBtn.disabled = false; timerEl.textContent = ''; return; }
+                timerEl.textContent = `Wait ${resendCooldown}s before resending`;
+                resendCooldown--;
+                setTimeout(tick, 1000);
+            };
+            tick();
+        }
+
+        resendBtn.addEventListener('click', () => sendCode(false));
+    </script>
+</body>
+</html>

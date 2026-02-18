@@ -67,52 +67,89 @@ class FFmpegService:
         return float(info['format']['duration'])
     
     @staticmethod
+    def calculate_crop_dimensions(orig_width: int, orig_height: int, aspect_ratio: str) -> tuple:
+        """Return (target_width, target_height) for a given aspect ratio string like '16:9'."""
+        aspect_w, aspect_h = map(int, aspect_ratio.split(":"))
+        target_aspect = aspect_w / aspect_h
+        orig_aspect = orig_width / orig_height
+        if orig_aspect > target_aspect:
+            new_height = orig_height
+            new_width = int(orig_height * target_aspect)
+        else:
+            new_width = orig_width
+            new_height = int(orig_width / target_aspect)
+        # Ensure even dimensions (required by most codecs)
+        return new_width - (new_width % 2), new_height - (new_height % 2)
+
+    @staticmethod
+    def build_crop_filter(orig_w: int, orig_h: int, target_w: int, target_h: int, position: str = "center") -> str:
+        """Return ffmpeg crop filter string: crop=w:h:x:y"""
+        if position == "top":
+            x, y = (orig_w - target_w) // 2, 0
+        elif position == "bottom":
+            x, y = (orig_w - target_w) // 2, orig_h - target_h
+        elif position == "left":
+            x, y = 0, (orig_h - target_h) // 2
+        elif position == "right":
+            x, y = orig_w - target_w, (orig_h - target_h) // 2
+        else:  # center
+            x, y = (orig_w - target_w) // 2, (orig_h - target_h) // 2
+        return f"crop={target_w}:{target_h}:{x}:{y}"
+
+    @staticmethod
     def split_video(
         input_path: str,
         output_dir: Path,
-        segment_duration: int
+        segment_duration: int,
+        aspect_ratio: Optional[str] = None,
+        crop_position: str = "center",
+        custom_width: Optional[int] = None,
+        custom_height: Optional[int] = None,
     ) -> List[Path]:
         """
-        Split video into equal-length segments
-        
-        Args:
-            input_path: Path to input video
-            output_dir: Directory to save segments
-            segment_duration: Length of each segment in seconds
-            
-        Returns:
-            List of paths to created segment files
-            
-        Raises:
-            subprocess.CalledProcessError: If ffmpeg fails
+        Split video into equal-length segments, with optional cropping.
+
+        Uses stream copy (fast, no quality loss) when no crop is needed.
+        Re-encodes with libx264 only when a crop filter is applied.
         """
-        # Create output pattern (segment_000.mp4, segment_001.mp4, etc.)
         output_pattern = str(output_dir / "segment_%03d.mp4")
-        
-        # Build ffmpeg command
-        cmd = [
-            'ffmpeg',
-            '-i', input_path,              # Input file
-            '-c', 'copy',                  # Copy codec (no re-encoding = FAST!)
-            '-map', '0',                   # Map all streams
-            '-segment_time', str(segment_duration),  # Segment length
-            '-f', 'segment',               # Output format: segment
-            '-reset_timestamps', '1',      # Reset timestamps for each segment
-            output_pattern                 # Output file pattern
-        ]
-        
-        # Run ffmpeg
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            check=True
-        )
-        
-        # Find all created segments
-        segments = sorted(output_dir.glob("segment_*.mp4"))
-        
-        return segments
+
+        crop_filter = None
+        if aspect_ratio and aspect_ratio != "custom":
+            orig_w, orig_h = FFmpegService.get_video_resolution(input_path)
+            if orig_w and orig_h:
+                target_w, target_h = FFmpegService.calculate_crop_dimensions(orig_w, orig_h, aspect_ratio)
+                if target_w != orig_w or target_h != orig_h:
+                    crop_filter = FFmpegService.build_crop_filter(orig_w, orig_h, target_w, target_h, crop_position)
+        elif aspect_ratio == "custom" and custom_width and custom_height:
+            orig_w, orig_h = FFmpegService.get_video_resolution(input_path)
+            if orig_w and orig_h:
+                tw = custom_width - (custom_width % 2)
+                th = custom_height - (custom_height % 2)
+                crop_filter = FFmpegService.build_crop_filter(orig_w, orig_h, tw, th, crop_position)
+
+        if crop_filter:
+            cmd = [
+                'ffmpeg', '-i', input_path,
+                '-vf', crop_filter,
+                '-c:v', 'libx264', '-preset', 'fast', '-crf', '18',
+                '-c:a', 'copy',
+                '-map', '0:v:0', '-map', '0:a?',
+                '-segment_time', str(segment_duration),
+                '-f', 'segment', '-reset_timestamps', '1',
+                output_pattern,
+            ]
+        else:
+            cmd = [
+                'ffmpeg', '-i', input_path,
+                '-c', 'copy', '-map', '0',
+                '-segment_time', str(segment_duration),
+                '-f', 'segment', '-reset_timestamps', '1',
+                output_pattern,
+            ]
+
+        subprocess.run(cmd, capture_output=True, text=True, check=True)
+        return sorted(output_dir.glob("segment_*.mp4"))
     
     @staticmethod
     def get_video_resolution(video_path: str) -> tuple:

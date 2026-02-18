@@ -252,3 +252,105 @@ async def toggle_admin(
         user_id,
     )
     return {"user_id": user_id, "is_admin": user.is_admin}
+
+
+@router.post("/users/{user_id}/ban", status_code=status.HTTP_200_OK)
+async def ban_user(
+    user_id: int,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Toggle a user's active/banned status."""
+    if user_id == admin.id:
+        raise HTTPException(status_code=400, detail="Cannot ban yourself")
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    user.is_active = not user.is_active
+    action = "banned" if not user.is_active else "unbanned"
+    logger.info("Admin %d %s user %d", admin.id, action, user_id)
+    return {"user_id": user_id, "is_active": user.is_active, "action": action}
+
+
+@router.post("/users/{user_id}/reset-usage", status_code=status.HTTP_200_OK)
+async def reset_user_usage(
+    user_id: int,
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Reset a user's monthly_minutes_used to 0."""
+    result = await db.execute(select(User).where(User.id == user_id))
+    user = result.scalar_one_or_none()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+    user.monthly_minutes_used = 0
+    user.last_usage_reset = datetime.now(timezone.utc)
+    logger.info("Admin %d reset usage for user %d", admin.id, user_id)
+    return {"user_id": user_id, "monthly_minutes_used": 0}
+
+
+@router.get("/system-health", status_code=status.HTTP_200_OK)
+async def system_health(
+    admin: User = Depends(require_admin),
+    db: AsyncSession = Depends(get_db),
+):
+    """Return system health stats: DB, Redis, disk usage, user/job counts."""
+    import shutil as _shutil
+    from datetime import timedelta
+    from sqlalchemy import func
+
+    from app.saas_layer.core.redis_client import get_redis
+
+    # Disk space
+    try:
+        disk = _shutil.disk_usage(".")
+        disk_total_gb = disk.total / (1024 ** 3)
+        disk_free_gb = disk.free / (1024 ** 3)
+        disk_pct_used = round((disk.used / disk.total) * 100, 1)
+        disk_status = "critical" if disk_pct_used > 90 else "warning" if disk_pct_used > 80 else "ok"
+    except Exception:
+        disk_total_gb = disk_free_gb = disk_pct_used = 0
+        disk_status = "unknown"
+
+    # Redis
+    redis_status = "disconnected"
+    try:
+        redis = await get_redis()
+        if redis:
+            await redis.ping()
+            redis_status = "connected"
+    except Exception:
+        pass
+
+    # DB stats
+    db_status = "connected"
+    total_users = jobs_last_24h = failed_jobs_last_hour = 0
+    try:
+        now = datetime.now(timezone.utc)
+        r = await db.execute(select(func.count(User.id)))
+        total_users = r.scalar_one()
+        r = await db.execute(select(func.count(Job.id)).where(Job.created_at >= now - timedelta(hours=24)))
+        jobs_last_24h = r.scalar_one()
+        r = await db.execute(
+            select(func.count(Job.id)).where(Job.status == "failed", Job.created_at >= now - timedelta(hours=1))
+        )
+        failed_jobs_last_hour = r.scalar_one()
+    except Exception as exc:
+        db_status = f"error: {exc}"
+
+    return {
+        "database": db_status,
+        "redis": redis_status,
+        "disk": {
+            "total_gb": round(disk_total_gb, 2),
+            "free_gb": round(disk_free_gb, 2),
+            "used_pct": disk_pct_used,
+            "status": disk_status,
+        },
+        "stats": {
+            "total_users": total_users,
+            "jobs_last_24h": jobs_last_24h,
+            "failed_jobs_last_hour": failed_jobs_last_hour,
+        },
+    }

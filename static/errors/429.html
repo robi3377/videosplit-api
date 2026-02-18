@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>429 — Rate Limited | VideoSplit</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+               background: #f9fafb; color: #1f2937; display: flex; align-items: center;
+               justify-content: center; min-height: 100vh; text-align: center; padding: 24px; }
+        .box { max-width: 520px; }
+        .code { font-size: 7em; font-weight: 900; color: #f59e0b; line-height: 1; margin-bottom: 8px; }
+        h1 { font-size: 1.6em; margin-bottom: 12px; }
+        p { color: #6b7280; margin-bottom: 16px; font-size: 1.05em; }
+        .emoji { font-size: 2.5em; margin-bottom: 16px; }
+        .limits { background: #fff; border: 1px solid #e5e7eb; border-radius: 12px; padding: 20px;
+                  margin: 20px 0; display: grid; grid-template-columns: repeat(2,1fr); gap: 12px; text-align: left; }
+        .limit-row { display: flex; flex-direction: column; }
+        .limit-plan { font-weight: 700; color: #374151; }
+        .limit-val { color: #6b7280; font-size: .9em; }
+        .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; margin-top: 8px; }
+        .btn { padding: 12px 24px; border-radius: 10px; text-decoration: none; font-weight: 600;
+               font-size: .95em; transition: opacity .2s; display: inline-block; }
+        .btn:hover { opacity: .85; }
+        .btn-primary { background: linear-gradient(135deg,#667eea,#764ba2); color: #fff; }
+        .btn-secondary { background: #fff; color: #6b7280; border: 2px solid #e5e7eb; }
+        #countdown { font-size: 1.1em; font-weight: 700; color: #f59e0b; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <div class="emoji">🚦</div>
+        <div class="code">429</div>
+        <h1>Too Many Requests</h1>
+        <p>Whoa, slow down! You've hit your rate limit.</p>
+        <p id="countdown"></p>
+        <div class="limits">
+            <div class="limit-row"><span class="limit-plan">FREE</span><span class="limit-val">5 splits/min</span></div>
+            <div class="limit-row"><span class="limit-plan">STARTER</span><span class="limit-val">20 splits/min</span></div>
+            <div class="limit-row"><span class="limit-plan">PRO</span><span class="limit-val">60 splits/min</span></div>
+            <div class="limit-row"><span class="limit-plan">ENTERPRISE</span><span class="limit-val">200 splits/min</span></div>
+        </div>
+        <div class="actions">
+            <a href="/static/plans.html" class="btn btn-primary">Upgrade Plan</a>
+            <a href="/static/dashboard.html" class="btn btn-secondary">Back to Dashboard</a>
+        </div>
+    </div>
+    <script>
+        let secs = 60;
+        const el = document.getElementById('countdown');
+        function tick() {
+            el.textContent = secs > 0 ? `Try again in ${secs}s` : 'You can try again now!';
+            if (secs > 0) { secs--; setTimeout(tick, 1000); }
+        }
+        tick();
+    </script>
+</body>
+</html>

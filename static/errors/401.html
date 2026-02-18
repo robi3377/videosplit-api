@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>401 — Unauthorized | VideoSplit</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+               background: #f9fafb; color: #1f2937; display: flex; align-items: center;
+               justify-content: center; min-height: 100vh; text-align: center; padding: 24px; }
+        .box { max-width: 480px; }
+        .code { font-size: 7em; font-weight: 900; color: #667eea; line-height: 1; margin-bottom: 8px; }
+        h1 { font-size: 1.6em; margin-bottom: 12px; }
+        p { color: #6b7280; margin-bottom: 28px; font-size: 1.05em; }
+        .emoji { font-size: 2.5em; margin-bottom: 16px; }
+        .actions { display: flex; gap: 12px; justify-content: center; flex-wrap: wrap; }
+        .btn { padding: 12px 24px; border-radius: 10px; text-decoration: none; font-weight: 600;
+               font-size: .95em; transition: opacity .2s; display: inline-block; }
+        .btn:hover { opacity: .85; }
+        .btn-primary { background: linear-gradient(135deg,#667eea,#764ba2); color: #fff; }
+        .btn-secondary { background: #fff; color: #667eea; border: 2px solid #667eea; }
+    </style>
+</head>
+<body>
+    <div class="box">
+        <div class="emoji">🔐</div>
+        <div class="code">401</div>
+        <h1>Unauthorized</h1>
+        <p>Please log in to access this feature.<br>Your session may have expired.</p>
+        <div class="actions">
+            <a href="/static/auth.html" class="btn btn-primary">Login</a>
+            <a href="/static/auth.html?mode=register" class="btn btn-secondary">Register</a>
+        </div>
+    </div>
+</body>
+</html>
