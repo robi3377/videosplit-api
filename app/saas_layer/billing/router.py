@@ -24,6 +24,9 @@ _PLAN_PRICE_MAP = {
     "pro": settings.STRIPE_PRICE_ID_PRO,
 }
 
+# Numeric order used to determine upgrade vs downgrade
+_TIER_ORDER = {"free": 0, "starter": 1, "pro": 2, "enterprise": 3}
+
 
 @router.post("/checkout", response_model=CheckoutResponse)
 async def create_checkout(
@@ -32,8 +35,9 @@ async def create_checkout(
     db: AsyncSession = Depends(get_db),
 ):
     """
-    Create a Stripe Checkout Session for upgrading to STARTER or PRO.
-    Returns a redirect URL to the Stripe-hosted checkout page.
+    Upgrade or downgrade a subscription.
+    - Existing subscribers: modify the subscription directly (prorated).
+    - New subscribers: create a Stripe Checkout Session.
     """
     if not settings.stripe_enabled:
         raise HTTPException(
@@ -48,8 +52,28 @@ async def create_checkout(
             detail=f"Unknown plan: {body.plan}",
         )
 
-    success_url = f"{settings.APP_BASE_URL}/static/index.html?payment=success"
-    cancel_url = f"{settings.APP_BASE_URL}/static/index.html?payment=cancelled"
+    # If the user already has an active subscription, modify it directly — no new checkout needed
+    if current_user.stripe_subscription_id and current_user.subscription_status in ("active", "trialing"):
+        current_order = _TIER_ORDER.get(current_user.plan_tier.value.lower(), 0)
+        target_order = _TIER_ORDER.get(body.plan, 0)
+        is_upgrade = target_order > current_order
+        try:
+            await stripe_client.modify_subscription(
+                subscription_id=current_user.stripe_subscription_id,
+                new_price_id=price_id,
+                is_upgrade=is_upgrade,
+            )
+        except Exception as exc:
+            logger.error("Stripe subscription modification failed: %s", exc)
+            raise HTTPException(
+                status_code=status.HTTP_502_BAD_GATEWAY,
+                detail="Failed to modify subscription",
+            )
+        return CheckoutResponse(plan_changed=True)
+
+    # New subscriber — create a Checkout Session
+    success_url = f"{settings.APP_BASE_URL}/static/dashboard.html?payment=success"
+    cancel_url = f"{settings.APP_BASE_URL}/static/dashboard.html?payment=cancelled"
 
     try:
         session = await stripe_client.create_checkout_session(

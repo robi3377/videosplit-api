@@ -9,7 +9,8 @@ class CreateCheckoutRequest(BaseModel):
 
 
 class CheckoutResponse(BaseModel):
-    checkout_url: str
+    checkout_url: Optional[str] = None
+    plan_changed: bool = False
 
 
 class PortalResponse(BaseModel):

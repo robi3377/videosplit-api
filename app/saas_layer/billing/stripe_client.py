@@ -72,6 +72,28 @@ async def retrieve_subscription(subscription_id: str) -> stripe.Subscription:
     return await asyncio.to_thread(_retrieve)
 
 
+async def modify_subscription(
+    subscription_id: str,
+    new_price_id: str,
+    is_upgrade: bool,
+) -> stripe.Subscription:
+    """
+    Switch an existing subscription to a new price ID.
+    Upgrades charge the prorated difference immediately.
+    Downgrades credit unused time on the next invoice.
+    """
+    def _modify():
+        sub = stripe.Subscription.retrieve(subscription_id, expand=["items.data.price"])
+        item_id = sub["items"]["data"][0]["id"]
+        return stripe.Subscription.modify(
+            subscription_id,
+            items=[{"id": item_id, "price": new_price_id}],
+            proration_behavior="always_invoice" if is_upgrade else "create_prorations",
+        )
+
+    return await asyncio.to_thread(_modify)
+
+
 async def construct_webhook_event(
     payload: bytes,
     sig_header: str,

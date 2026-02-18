@@ -252,13 +252,20 @@ function renderCurrentPlan(status) {
     `;
 }
 
+const TIER_ORDER = { free: 0, starter: 1, pro: 2, enterprise: 3 };
+
 function renderPlanGrid(currentTier) {
     const tiers = ['free', 'starter', 'pro', 'enterprise'];
+    const currentOrder = TIER_ORDER[currentTier?.toLowerCase()] ?? 0;
     const grid = document.getElementById('planGrid');
     grid.innerHTML = tiers.map(tier => {
         const d = PLAN_DETAILS[tier];
         const isCurrent = tier === currentTier?.toLowerCase();
         const isEnterprise = tier === 'enterprise';
+        const isFree = tier === 'free';
+        const targetOrder = TIER_ORDER[tier] ?? 0;
+        const isUpgrade = targetOrder > currentOrder;
+        const btnLabel = isUpgrade ? `Upgrade to ${d.label}` : `Downgrade to ${d.label}`;
         return `
         <div class="plan-card ${isCurrent ? 'plan-current' : ''} ${tier === 'pro' ? 'plan-featured' : ''}">
             ${tier === 'pro' ? '<div class="plan-popular">Most Popular</div>' : ''}
@@ -275,7 +282,9 @@ function renderPlanGrid(currentTier) {
                 ? `<button class="plan-btn plan-btn-current" disabled>Current Plan</button>`
                 : isEnterprise
                 ? `<button class="plan-btn secondary-btn" style="margin:0;width:100%" onclick="showToast('Contact us at hello@videosplit.com','info')">Contact Sales</button>`
-                : `<button class="plan-btn primary-btn" style="margin:0;width:100%" onclick="upgradePlan('${tier}')">Upgrade to ${d.label}</button>`
+                : isFree
+                ? `<button class="plan-btn secondary-btn" style="margin:0;width:100%;opacity:.7" onclick="openPortal()">Cancel Subscription →</button>`
+                : `<button class="plan-btn primary-btn" style="margin:0;width:100%" onclick="upgradePlan('${tier}')">${btnLabel}</button>`
             }
         </div>`;
     }).join('');
@@ -284,7 +293,12 @@ function renderPlanGrid(currentTier) {
 async function upgradePlan(plan) {
     try {
         const data = await apiJSON('/billing/checkout', { method: 'POST', body: JSON.stringify({ plan }) });
-        window.location.href = data.checkout_url;
+        if (data.plan_changed) {
+            showToast('Plan updated! Changes will take effect shortly.', 'success');
+            setTimeout(loadBilling, 2500);
+        } else {
+            window.location.href = data.checkout_url;
+        }
     } catch (err) {
         showToast(err.detail || 'Billing not configured yet', 'warning');
     }

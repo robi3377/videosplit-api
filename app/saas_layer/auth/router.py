@@ -375,7 +375,7 @@ async def google_callback(
 
     token_resp = _build_token_response(user)
     redirect_url = (
-        f"{settings.APP_BASE_URL}/static/index.html"
+        f"{settings.APP_BASE_URL}/static/auth.html"
         f"?access_token={token_resp.access_token}"
         f"&refresh_token={token_resp.refresh_token}"
     )
