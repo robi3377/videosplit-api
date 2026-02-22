@@ -1,6 +1,11 @@
 """
-Cleanup service — deletes job output files older than 24 hours.
+Cleanup service — deletes expired job files from R2 and/or local disk.
 Runs as a background asyncio task (scheduled every hour).
+
+Strategy:
+- New jobs (R2 enabled): delete objects under jobs/{job_id}/
+- Old jobs (local fallback): delete the outputs/{job_id}/ directory
+- Both are attempted so mixed-state deployments clean up correctly.
 """
 import asyncio
 import logging
@@ -8,11 +13,12 @@ import shutil
 from datetime import datetime, timezone
 from pathlib import Path
 
-from sqlalchemy import select, update
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
 
+from app.saas_layer.core.config import settings
 from app.saas_layer.db.base import AsyncSessionLocal
 from app.saas_layer.db.models import Job
+from app.services import r2_service
 
 logger = logging.getLogger(__name__)
 
@@ -21,7 +27,7 @@ OUTPUT_DIR = Path("outputs")
 
 async def cleanup_old_files() -> dict:
     """
-    Find jobs whose expires_at has passed, delete their output files,
+    Find jobs whose expires_at has passed, delete their files (R2 + local),
     and mark the job status as 'expired'.
     Returns a summary dict with counts.
     """
@@ -31,7 +37,6 @@ async def cleanup_old_files() -> dict:
 
     async with AsyncSessionLocal() as db:
         try:
-            # Find expired jobs that still have status 'completed'
             result = await db.execute(
                 select(Job).where(
                     Job.expires_at <= now,
@@ -41,13 +46,22 @@ async def cleanup_old_files() -> dict:
             expired_jobs = result.scalars().all()
 
             for job in expired_jobs:
-                job_dir = OUTPUT_DIR / job.job_id
                 try:
+                    # Delete from R2 (new jobs)
+                    if settings.r2_enabled:
+                        count = await r2_service.delete_prefix(f"jobs/{job.job_id}/")
+                        if count:
+                            logger.info("R2: deleted %d objects for job %s", count, job.job_id)
+
+                    # Delete from local filesystem (old jobs / fallback)
+                    job_dir = OUTPUT_DIR / job.job_id
                     if job_dir.exists():
                         shutil.rmtree(job_dir)
-                        logger.info("Deleted output dir for expired job %s", job.job_id)
+                        logger.info("Local: deleted output dir for job %s", job.job_id)
+
                     job.status = "expired"
                     deleted += 1
+
                 except Exception as exc:
                     logger.error("Failed to delete job %s: %s", job.job_id, exc)
                     errors += 1

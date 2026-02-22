@@ -154,19 +154,41 @@ class FFmpegService:
     @staticmethod
     def get_video_resolution(video_path: str) -> tuple:
         """
-        Get video resolution (width, height)
-        
-        Args:
-            video_path: Path to the video file
-            
-        Returns:
-            Tuple of (width, height)
+        Return the display (width, height), accounting for rotation metadata.
+
+        iPhones store videos in sensor orientation (e.g. 1920×1080) and embed
+        a rotation tag (90° or 270°) so players rotate on playback. FFmpeg's
+        filter graph applies this rotation before any -vf filters, so crop
+        math must use the *display* dimensions, not the coded ones.
         """
         info = FFmpegService.get_video_info(video_path)
-        
-        # Find video stream
+
         for stream in info['streams']:
             if stream['codec_type'] == 'video':
-                return (stream['width'], stream['height'])
-        
+                w = stream['width']
+                h = stream['height']
+
+                # 1) Check the 'rotate' metadata tag (MOV/MP4, common on iPhone)
+                rotation = 0
+                tags = stream.get('tags', {}) or {}
+                try:
+                    rotation = abs(int(tags.get('rotate', 0)))
+                except (ValueError, TypeError):
+                    rotation = 0
+
+                # 2) Fall back to Display Matrix side data (newer Apple devices)
+                if rotation == 0:
+                    for sd in stream.get('side_data_list', []):
+                        if sd.get('side_data_type') == 'Display Matrix':
+                            try:
+                                rotation = abs(int(sd.get('rotation', 0))) % 360
+                            except (ValueError, TypeError):
+                                pass
+                            break
+
+                # Swap dimensions for 90° / 270° rotations
+                if rotation in (90, 270):
+                    return (h, w)
+                return (w, h)
+
         return (0, 0)

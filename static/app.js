@@ -203,12 +203,7 @@ function handleFileSelect(file) {
         return;
     }
 
-    // Validate file size (500MB max)
-    const maxSize = 500 * 1024 * 1024; // 500MB in bytes
-    if (file.size > maxSize) {
-        showError('File size exceeds 500MB limit. Please select a smaller file.');
-        return;
-    }
+        // No client-side size limit — files go directly to R2 (no Cloudflare proxy limit)
 
     // Store file
     selectedFile = file;
@@ -247,28 +242,155 @@ function getCropParams() {
     return { aspect_ratio: ar, crop_position: pos, custom_width: cw, custom_height: ch };
 }
 
+// ====================== //
+// Direct R2 Upload Flow  //
+// ====================== //
+
+function showProcessingUI() {
+    showSection('processing');
+    document.getElementById('processingSection').innerHTML = `
+        <div class="spinner-container">
+            <div class="spinner"></div>
+            <div class="spinner-percentage" id="uploadPercentage">0%</div>
+        </div>
+        <h3 id="uploadTitle">Uploading to cloud storage...</h3>
+        <div class="progress-bar-container">
+            <div class="progress-bar">
+                <div class="progress-bar-fill" id="progressBarFill" style="width:0%"></div>
+            </div>
+        </div>
+        <p id="uploadStatus">Preparing upload…</p>`;
+}
+
+function setProcessingStatus(title, status, pct) {
+    const el = (id) => document.getElementById(id);
+    if (el('uploadTitle'))      el('uploadTitle').textContent      = title;
+    if (el('uploadStatus'))     el('uploadStatus').textContent     = status;
+    if (el('uploadPercentage')) el('uploadPercentage').textContent = pct + '%';
+    if (el('progressBarFill'))  el('progressBarFill').style.width  = pct + '%';
+}
+
+/**
+ * Upload a File object directly to R2 using a presigned PUT URL.
+ * Shows upload progress in the processing section.
+ * Returns a Promise that resolves when the upload is complete.
+ */
+function uploadToR2(presignedUrl, file) {
+    return new Promise((resolve, reject) => {
+        const xhr = new XMLHttpRequest();
+
+        xhr.upload.addEventListener('progress', (e) => {
+            if (e.lengthComputable) {
+                const pct = Math.round((e.loaded / e.total) * 100);
+                const uploadedMB = (e.loaded / 1048576).toFixed(1);
+                const totalMB   = (e.total   / 1048576).toFixed(1);
+                setProcessingStatus(
+                    'Uploading to cloud storage…',
+                    `${uploadedMB} MB of ${totalMB} MB`,
+                    pct
+                );
+            }
+        });
+
+        xhr.upload.addEventListener('load', () => {
+            setProcessingStatus('Processing video…', 'Splitting into segments…', 100);
+        });
+
+        xhr.addEventListener('load', () => {
+            // R2 PUT returns 200 on success (some configurations return 204)
+            if (xhr.status >= 200 && xhr.status < 300) {
+                resolve();
+            } else {
+                reject(new Error(`Cloud upload failed (HTTP ${xhr.status}). Check R2 CORS settings.`));
+            }
+        });
+
+        xhr.addEventListener('error', () => reject(new Error('Network error during cloud upload.')));
+        xhr.addEventListener('abort', () => reject(new Error('Upload cancelled.')));
+
+        xhr.open('PUT', presignedUrl);
+        // Set Content-Type so R2 stores the correct MIME type
+        xhr.setRequestHeader('Content-Type', file.type || 'application/octet-stream');
+        xhr.send(file);
+    });
+}
+
 async function splitVideo() {
     if (!selectedFile) return;
 
-    // Show processing section with progress
-    showSection('processing');
-    
-    // Update processing message with percentage in spinner AND progress bar
-    const processingSection = document.getElementById('processingSection');
-    processingSection.innerHTML = `
-    <div class="spinner-container">
-        <div class="spinner"></div>
-        <div class="spinner-percentage" id="uploadPercentage">0%</div>
-    </div>
-    <h3 id="uploadTitle">Uploading video...</h3>
-    <div class="progress-bar-container">
-        <div class="progress-bar">
-            <div class="progress-bar-fill" id="progressBarFill" style="width: 0%"></div>
-        </div>
-    </div>
-    <p id="uploadStatus">Preparing upload...</p>
-`;
+    showProcessingUI();
+    setProcessingStatus('Preparing upload…', 'Connecting to cloud storage…', 0);
 
+    const crop = getCropParams();
+    const duration = parseInt(segmentDuration.value);
+    const token = typeof getToken === 'function' ? getToken() : localStorage.getItem('vs_access_token');
+
+    try {
+        // Step 1: Get presigned PUT URL from our API
+        const initResp = await fetch(`${API_BASE_URL}/api/v1/upload/init`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+            },
+            body: JSON.stringify({ filename: selectedFile.name }),
+        });
+
+        if (initResp.status === 401) { showError('Please sign in to upload videos.'); return; }
+        if (initResp.status === 503) {
+            // R2 not configured — fall back to legacy direct-server upload
+            return splitVideoLegacy();
+        }
+        if (!initResp.ok) {
+            const d = await initResp.json().catch(() => ({}));
+            showError(d.detail || 'Failed to initialize upload.');
+            return;
+        }
+
+        const { job_id, upload_url } = await initResp.json();
+
+        // Step 2: Upload file DIRECTLY to R2 (bypasses Cloudflare / our server)
+        await uploadToR2(upload_url, selectedFile);
+
+        // Step 3: Tell our server to process the uploaded file
+        setProcessingStatus('Processing video…', 'Splitting into segments…', 100);
+
+        const processResp = await fetch(`${API_BASE_URL}/api/v1/upload/process`, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(token ? { 'Authorization': 'Bearer ' + token } : {}),
+            },
+            body: JSON.stringify({
+                job_id,
+                segment_duration: duration,
+                aspect_ratio:  crop.aspect_ratio  || null,
+                crop_position: crop.crop_position || 'center',
+                custom_width:  crop.custom_width  ? parseInt(crop.custom_width)  : null,
+                custom_height: crop.custom_height ? parseInt(crop.custom_height) : null,
+            }),
+        });
+
+        if (processResp.status === 402) { showError('Monthly usage limit reached. Please upgrade your plan.'); return; }
+        if (processResp.status === 429) { showError('Too many requests. Please wait a moment and try again.'); return; }
+        if (!processResp.ok) {
+            const d = await processResp.json().catch(() => ({}));
+            showError(d.detail || 'Video processing failed.');
+            return;
+        }
+
+        const data = await processResp.json();
+        currentJobId = data.job_id;
+        displayResults(data);
+
+    } catch (err) {
+        console.error('Upload/process error:', err);
+        showError(err.message || 'An unexpected error occurred. Please try again.');
+    }
+}
+
+/** Legacy fallback: send file through our server (works for files under Cloudflare's 100 MB limit). */
+async function splitVideoLegacy() {
     const formData = new FormData();
     formData.append('file', selectedFile);
     const crop = getCropParams();
@@ -278,93 +400,37 @@ async function splitVideo() {
     if (crop.custom_height) formData.append('custom_height', crop.custom_height);
 
     const duration = segmentDuration.value;
+    const token = typeof getToken === 'function' ? getToken() : localStorage.getItem('vs_access_token');
 
-    try {
-        // Create XMLHttpRequest for progress tracking
-        const xhr = new XMLHttpRequest();
-        
-        // Track upload progress
-        xhr.upload.addEventListener('progress', (e) => {
-            if (e.lengthComputable) {
-                const percentComplete = Math.round((e.loaded / e.total) * 100);
-                const uploadPercentage = document.getElementById('uploadPercentage');
-                const progressBarFill = document.getElementById('progressBarFill');
-                const uploadStatus = document.getElementById('uploadStatus');
-                
-                // Update percentage in spinner
-                if (uploadPercentage) {
-                    uploadPercentage.textContent = percentComplete + '%';
-                }
-                
-                // Update progress bar
-                if (progressBarFill) {
-                    progressBarFill.style.width = percentComplete + '%';
-                }
-                
-                // Update status text
-                if (uploadStatus) {
-                    const uploadedMB = (e.loaded / (1024 * 1024)).toFixed(1);
-                    const totalMB = (e.total / (1024 * 1024)).toFixed(1);
-                    uploadStatus.textContent = `Uploaded ${uploadedMB} MB of ${totalMB} MB`;
-                }
-            }
-        });
-        
-        // When upload completes, show processing message
-        xhr.upload.addEventListener('load', () => {
-            const uploadTitle = document.getElementById('uploadTitle');
-            const uploadStatus = document.getElementById('uploadStatus');
-            const uploadPercentage = document.getElementById('uploadPercentage');
-            const progressBarFill = document.getElementById('progressBarFill');
-            
-            if (uploadPercentage) {
-                uploadPercentage.textContent = '100%';
-            }
-            if (progressBarFill) {
-                progressBarFill.style.width = '100%';
-            }
-            if (uploadTitle) {
-                uploadTitle.textContent = 'Processing video...';
-            }
-            if (uploadStatus) {
-                uploadStatus.textContent = 'Splitting into segments...';
-            }
-        });
-        
-        // Handle completion
-        xhr.addEventListener('load', () => {
-            if (xhr.status === 200) {
-                const data = JSON.parse(xhr.responseText);
-                currentJobId = data.job_id;
-                displayResults(data);
-            } else if (xhr.status === 401) {
-                showError('Please sign in to upload videos.');
-            } else if (xhr.status === 402) {
-                showError('Monthly usage limit reached. Please upgrade your plan.');
-            } else if (xhr.status === 429) {
-                showError('Too many requests. Please wait a moment and try again.');
-            } else {
-                let detail = 'Failed to process video';
-                try { detail = JSON.parse(xhr.responseText).detail; } catch(_) {}
-                showError(detail);
-            }
-        });
-        
-        // Handle errors
-        xhr.addEventListener('error', () => {
-            showError('Network error. Check your connection and try again.');
-        });
-        
-        // Send request (attach JWT if logged in)
-        xhr.open('POST', `${API_BASE_URL}/api/v1/split?segment_duration=${duration}`);
-        const token = typeof getToken === 'function' ? getToken() : localStorage.getItem('vs_access_token');
-        if (token) xhr.setRequestHeader('Authorization', 'Bearer ' + token);
-        xhr.send(formData);
-
-    } catch (error) {
-        console.error('Error:', error);
-        showError(error.message || 'An unexpected error occurred. Please try again.');
-    }
+    const xhr = new XMLHttpRequest();
+    xhr.upload.addEventListener('progress', (e) => {
+        if (e.lengthComputable) {
+            const pct = Math.round((e.loaded / e.total) * 100);
+            setProcessingStatus('Uploading video…', `${(e.loaded/1048576).toFixed(1)} MB of ${(e.total/1048576).toFixed(1)} MB`, pct);
+        }
+    });
+    xhr.upload.addEventListener('load', () => setProcessingStatus('Processing video…', 'Splitting into segments…', 100));
+    xhr.addEventListener('load', () => {
+        if (xhr.status === 200) {
+            const data = JSON.parse(xhr.responseText);
+            currentJobId = data.job_id;
+            displayResults(data);
+        } else if (xhr.status === 401) {
+            showError('Please sign in to upload videos.');
+        } else if (xhr.status === 402) {
+            showError('Monthly usage limit reached. Please upgrade your plan.');
+        } else if (xhr.status === 429) {
+            showError('Too many requests. Please wait a moment and try again.');
+        } else {
+            let detail = 'Failed to process video';
+            try { detail = JSON.parse(xhr.responseText).detail; } catch (_) {}
+            showError(detail);
+        }
+    });
+    xhr.addEventListener('error', () => showError('Network error. Check your connection and try again.'));
+    xhr.open('POST', `${API_BASE_URL}/api/v1/split?segment_duration=${duration}`);
+    if (token) xhr.setRequestHeader('Authorization', 'Bearer ' + token);
+    xhr.send(formData);
 }
 
 function displayResults(data) {
@@ -563,7 +629,7 @@ function addToQueue(file) {
     const allowed = ['.mp4', '.mov', '.avi', '.mkv'];
     const ext = '.' + (file.name.split('.').pop() || '').toLowerCase();
     if (!allowed.includes(ext)) { showToast(`${file.name} — unsupported format`, 'warning'); return; }
-    if (file.size > 500 * 1024 * 1024) { showToast(`${file.name} exceeds 500MB`, 'warning'); return; }
+    // No size limit — direct R2 upload bypasses Cloudflare proxy
     fileQueue.push({ id: Math.random().toString(36).slice(2), file, status: 'queued' });
 }
 
@@ -597,35 +663,54 @@ async function processQueue() {
     splitBtn.disabled = true;
     splitBtn.textContent = `Processing 0 / ${fileQueue.length}…`;
 
+    const crop = getCropParams();
+    const duration = parseInt(segmentDuration.value);
+    const token = typeof getToken === 'function' ? getToken() : localStorage.getItem('vs_access_token');
+    const authHeader = token ? { 'Authorization': 'Bearer ' + token } : {};
+
     let done = 0;
     for (const item of fileQueue) {
         item.status = 'uploading';
         renderQueue();
         try {
-            const fd = new FormData();
-            fd.append('file', item.file);
-            const crop = getCropParams();
-            if (crop.aspect_ratio) fd.append('aspect_ratio', crop.aspect_ratio);
-            if (crop.crop_position) fd.append('crop_position', crop.crop_position);
-            if (crop.custom_width)  fd.append('custom_width', crop.custom_width);
-            if (crop.custom_height) fd.append('custom_height', crop.custom_height);
-            const duration = segmentDuration.value;
+            // Step 1: Init
+            const initResp = await fetch(`${API_BASE_URL}/api/v1/upload/init`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...authHeader },
+                body: JSON.stringify({ filename: item.file.name }),
+            });
 
-            const res = await apiFetch(`/api/v1/split?segment_duration=${duration}`, { method: 'POST', body: fd });
-            if (res.ok) {
-                const data = await res.json();
-                item.status = 'done';
-                item.result = data;
-                done++;
-            } else {
-                item.status = 'failed';
-            }
+            if (!initResp.ok) throw new Error('Init failed');
+            const { job_id, upload_url } = await initResp.json();
+
+            // Step 2: Upload directly to R2
+            await uploadToR2(upload_url, item.file);
+
+            // Step 3: Process
+            const processResp = await fetch(`${API_BASE_URL}/api/v1/upload/process`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', ...authHeader },
+                body: JSON.stringify({
+                    job_id,
+                    segment_duration: duration,
+                    aspect_ratio:  crop.aspect_ratio  || null,
+                    crop_position: crop.crop_position || 'center',
+                    custom_width:  crop.custom_width  ? parseInt(crop.custom_width)  : null,
+                    custom_height: crop.custom_height ? parseInt(crop.custom_height) : null,
+                }),
+            });
+
+            if (!processResp.ok) throw new Error('Process failed');
+            const data = await processResp.json();
+            item.status = 'done';
+            item.result = data;
+            done++;
         } catch (_) {
             item.status = 'failed';
         }
         splitBtn.textContent = `Processing ${done} / ${fileQueue.length}…`;
         renderQueue();
-        await new Promise(r => setTimeout(r, 500)); // small delay between files
+        await new Promise(r => setTimeout(r, 300));
     }
 
     splitBtn.disabled = false;

@@ -35,6 +35,13 @@ class Settings(BaseSettings):
     # App
     APP_BASE_URL: str = "http://localhost:8000"
 
+    # Cloudflare R2 (leave blank to use local filesystem)
+    R2_ACCOUNT_ID: str = ""
+    R2_ACCESS_KEY_ID: str = ""
+    R2_SECRET_ACCESS_KEY: str = ""
+    R2_BUCKET_NAME: str = ""
+    R2_ENDPOINT_URL: str = ""
+
     # Email / SMTP (leave blank to disable email sending)
     SMTP_HOST: str = ""
     SMTP_PORT: int = 587
@@ -68,6 +75,10 @@ class Settings(BaseSettings):
     @property
     def stripe_webhooks_enabled(self) -> bool:
         return bool(self.STRIPE_WEBHOOK_SECRET)
+
+    @property
+    def r2_enabled(self) -> bool:
+        return bool(self.R2_ENDPOINT_URL and self.R2_ACCESS_KEY_ID and self.R2_SECRET_ACCESS_KEY and self.R2_BUCKET_NAME)
 
     @property
     def email_enabled(self) -> bool:
