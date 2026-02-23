@@ -6,6 +6,9 @@ from typing import List, Dict, Optional
 
 class FFmpegService:
     """Service for video processing using FFmpeg"""
+
+    # Audio codecs that FFmpeg cannot decode; streams using these must be excluded.
+    _UNSUPPORTED_AUDIO_CODECS = frozenset({"apac", "tmcd"})
     
     @staticmethod
     def check_ffmpeg_installed() -> bool:
@@ -97,6 +100,29 @@ class FFmpegService:
         return f"crop={target_w}:{target_h}:{x}:{y}"
 
     @staticmethod
+    def _get_audio_stream_info(video_path: str):
+        """
+        Probe audio streams and return (has_bad_audio, good_audio_indices).
+
+        has_bad_audio        – True if any audio stream uses an unsupported codec.
+        good_audio_indices   – list of 0-based audio-stream indices that are safe
+                               to decode/copy (e.g. [0] when only stream 0:a:0 is AAC).
+        """
+        info = FFmpegService.get_video_info(video_path)
+        audio_idx = 0
+        has_bad = False
+        good_indices = []
+        for stream in info.get('streams', []):
+            if stream.get('codec_type') == 'audio':
+                codec = (stream.get('codec_name') or '').lower().strip()
+                if not codec or codec in FFmpegService._UNSUPPORTED_AUDIO_CODECS:
+                    has_bad = True
+                else:
+                    good_indices.append(audio_idx)
+                audio_idx += 1
+        return has_bad, good_indices
+
+    @staticmethod
     def split_video(
         input_path: str,
         output_dir: Path,
@@ -109,11 +135,14 @@ class FFmpegService:
         """
         Split video into equal-length segments, with optional cropping.
 
-        Uses stream copy (fast, no quality loss) when no crop is needed.
-        Re-encodes with libx264 only when a crop filter is applied.
+        - Pure stream copy when no crop is needed and all audio is decodable.
+        - Re-encodes video with libx264 + ultrafast preset when a crop is applied.
+        - Automatically drops unsupported audio streams (e.g. iPhone APAC) and
+          re-encodes the remaining audio to AAC.
         """
         output_pattern = str(output_dir / "segment_%03d.mp4")
 
+        # ── Crop filter ──────────────────────────────────────────────────────
         crop_filter = None
         if aspect_ratio and aspect_ratio != "custom":
             orig_w, orig_h = FFmpegService.get_video_resolution(input_path)
@@ -128,18 +157,48 @@ class FFmpegService:
                 th = custom_height - (custom_height % 2)
                 crop_filter = FFmpegService.build_crop_filter(orig_w, orig_h, tw, th, crop_position)
 
-        if crop_filter:
-            cmd = [
-                'ffmpeg', '-i', input_path,
-                '-vf', crop_filter,
-                '-c:v', 'libx264', '-preset', 'fast', '-crf', '18',
-                '-c:a', 'copy',
-                '-map', '0:v:0', '-map', '0:a?',
-                '-segment_time', str(segment_duration),
-                '-f', 'segment', '-reset_timestamps', '1',
-                output_pattern,
-            ]
+        # ── Audio codec check (handles iPhone's APAC stream) ─────────────────
+        has_bad_audio, good_audio_indices = FFmpegService._get_audio_stream_info(input_path)
+
+        if has_bad_audio:
+            # Only map decodable audio streams and re-encode them to AAC
+            audio_maps: List[str] = []
+            for idx in good_audio_indices:
+                audio_maps += ['-map', f'0:a:{idx}']
+            audio_codec = ['-c:a', 'aac']
         else:
+            audio_maps = ['-map', '0:a?']
+            audio_codec = None  # set below depending on crop path
+
+        seg_args = [
+            '-segment_time', str(segment_duration),
+            '-f', 'segment', '-reset_timestamps', '1',
+            output_pattern,
+        ]
+
+        # ── Build final command ───────────────────────────────────────────────
+        if crop_filter:
+            final_audio_codec = audio_codec if audio_codec else ['-c:a', 'copy']
+            cmd = (
+                ['ffmpeg', '-i', input_path,
+                 '-vf', crop_filter,
+                 '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '18']
+                + final_audio_codec
+                + ['-map', '0:v:0']
+                + audio_maps
+                + seg_args
+            )
+        elif has_bad_audio:
+            # No crop but bad audio — copy video, re-encode only audio
+            cmd = (
+                ['ffmpeg', '-i', input_path, '-c:v', 'copy']
+                + audio_codec
+                + ['-map', '0:v:0']
+                + audio_maps
+                + seg_args
+            )
+        else:
+            # No crop, no bad audio — pure stream copy, fastest path
             cmd = [
                 'ffmpeg', '-i', input_path,
                 '-c', 'copy', '-map', '0',

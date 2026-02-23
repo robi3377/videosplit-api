@@ -45,7 +45,7 @@ async def lifespan(app: FastAPI):
 
     # Start background cleanup loop (deletes job files older than 24h)
     from app.services.cleanup_service import run_cleanup_loop
-    cleanup_task = asyncio.create_task(run_cleanup_loop(interval_seconds=3600))
+    cleanup_task = asyncio.create_task(run_cleanup_loop(interval_seconds=300))
 
     yield
 

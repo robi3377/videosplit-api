@@ -134,5 +134,7 @@ async def delete_prefix(prefix: str) -> int:
 
     count = await asyncio.to_thread(_delete)
     if count:
-        logger.info("R2 deleted %d objects under prefix %s", count, prefix)
+        logger.info("R2: deleted %d objects under prefix '%s'", count, prefix)
+    else:
+        logger.debug("R2: no objects found under prefix '%s'", prefix)
     return count

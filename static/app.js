@@ -608,15 +608,17 @@ function formatDuration(seconds) {
 // ==================== //
 
 (function setupCropControls() {
-    const arSelect   = document.getElementById('aspectRatioSelect');
-    const posField   = document.getElementById('cropPositionField');
-    const customDiv  = document.getElementById('cropCustom');
+    const arSelect    = document.getElementById('aspectRatioSelect');
+    const posField    = document.getElementById('cropPositionField');
+    const customDiv   = document.getElementById('cropCustom');
+    const cropWarning = document.getElementById('cropWarning');
     if (!arSelect) return;
 
     arSelect.addEventListener('change', () => {
         const val = arSelect.value;
-        posField.style.display = val ? '' : 'none';
-        customDiv.style.display = val === 'custom' ? 'flex' : 'none';
+        posField.style.display    = val ? '' : 'none';
+        customDiv.style.display   = val === 'custom' ? 'flex' : 'none';
+        if (cropWarning) cropWarning.style.display = val ? '' : 'none';
     });
     posField.style.display = 'none'; // hidden until a ratio is chosen
 })();

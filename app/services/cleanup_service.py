@@ -47,13 +47,23 @@ async def cleanup_old_files() -> dict:
 
             for job in expired_jobs:
                 try:
-                    # Delete from R2 (new jobs)
+                    # ── R2 deletion ───────────────────────────────────────────
                     if settings.r2_enabled:
-                        count = await r2_service.delete_prefix(f"jobs/{job.job_id}/")
-                        if count:
-                            logger.info("R2: deleted %d objects for job %s", count, job.job_id)
+                        prefix = f"jobs/{job.job_id}/"
+                        logger.info("R2: deleting objects under %s", prefix)
+                        try:
+                            count = await r2_service.delete_prefix(prefix)
+                            if count:
+                                logger.info("R2: deleted %d object(s) for job %s", count, job.job_id)
+                            else:
+                                logger.warning("R2: no objects found under %s (already deleted or wrong prefix)", prefix)
+                        except Exception as r2_exc:
+                            logger.error("R2: deletion failed for job %s: %s", job.job_id, r2_exc)
+                            # Continue — still mark expired and clean local files
+                    else:
+                        logger.warning("R2: not configured — skipping R2 cleanup for job %s", job.job_id)
 
-                    # Delete from local filesystem (old jobs / fallback)
+                    # ── Local filesystem fallback (pre-R2 jobs) ───────────────
                     job_dir = OUTPUT_DIR / job.job_id
                     if job_dir.exists():
                         shutil.rmtree(job_dir)
@@ -63,7 +73,7 @@ async def cleanup_old_files() -> dict:
                     deleted += 1
 
                 except Exception as exc:
-                    logger.error("Failed to delete job %s: %s", job.job_id, exc)
+                    logger.error("Failed to expire job %s: %s", job.job_id, exc)
                     errors += 1
 
             await db.commit()
@@ -78,7 +88,7 @@ async def cleanup_old_files() -> dict:
     return summary
 
 
-async def run_cleanup_loop(interval_seconds: int = 3600) -> None:
+async def run_cleanup_loop(interval_seconds: int = 300) -> None:
     """
     Infinite loop that calls cleanup_old_files() every interval_seconds.
     Designed to be launched as an asyncio background task.
