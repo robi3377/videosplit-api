@@ -5,7 +5,7 @@ from pydantic import BaseModel, ConfigDict
 
 
 class CreateCheckoutRequest(BaseModel):
-    plan: Literal["starter", "pro"]
+    plan: Literal["starter", "pro", "business"]
 
 
 class CheckoutResponse(BaseModel):
