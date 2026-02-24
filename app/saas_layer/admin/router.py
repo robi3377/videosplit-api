@@ -205,12 +205,12 @@ async def set_user_plan(
     else:
         # Apply default limits for the new plan
         defaults = {
-            PlanTier.FREE: 100,
-            PlanTier.STARTER: 1000,
-            PlanTier.PRO: 999999,
-            PlanTier.ENTERPRISE: 999999,
+            PlanTier.FREE: 60,
+            PlanTier.STARTER: 600,
+            PlanTier.PRO: 3000,
+            PlanTier.ENTERPRISE: 15000,
         }
-        user.monthly_minutes_limit = defaults.get(user.plan_tier, 100)
+        user.monthly_minutes_limit = defaults.get(user.plan_tier, 60)
 
     logger.info(
         "Admin %d set user %d plan to %s (%d min)",

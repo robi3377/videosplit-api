@@ -12,9 +12,9 @@ logger = logging.getLogger(__name__)
 # Requests per minute allowed for the /split endpoint per plan
 _SPLIT_RATE_LIMITS: dict[PlanTier, int] = {
     PlanTier.FREE: 5,
-    PlanTier.STARTER: 20,
-    PlanTier.PRO: 60,
-    PlanTier.ENTERPRISE: 200,
+    PlanTier.STARTER: 30,
+    PlanTier.PRO: 100,
+    PlanTier.ENTERPRISE: 500,
 }
 
 # General API rate limits (per minute)

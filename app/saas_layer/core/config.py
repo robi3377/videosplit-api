@@ -30,6 +30,7 @@ class Settings(BaseSettings):
     STRIPE_PUBLISHABLE_KEY: str = ""
     STRIPE_PRICE_ID_STARTER: str = ""
     STRIPE_PRICE_ID_PRO: str = ""
+    STRIPE_PRICE_ID_BUSINESS: str = ""
     STRIPE_WEBHOOK_SECRET: str = ""
 
     # App
@@ -50,12 +51,12 @@ class Settings(BaseSettings):
     FROM_EMAIL: str = "noreply@videosplit.com"
     ALERT_EMAIL: str = ""  # Admin alert recipient
 
-    # Plan minute limits (-1 = unlimited stored as 999999 in DB)
+    # Plan minute limits
     PLAN_LIMITS: dict = {
-        "free": 100,
-        "starter": 1000,
-        "pro": 999999,
-        "enterprise": 999999,
+        "free": 60,
+        "starter": 600,
+        "pro": 3000,
+        "enterprise": 15000,  # business tier
     }
 
     model_config = {

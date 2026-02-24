@@ -43,9 +43,9 @@ async def lifespan(app: FastAPI):
     """Startup: initialise DB + SaaS routers + background tasks. Shutdown: close connections."""
     await register_saas_layer(app)
 
-    # Start background cleanup loop (deletes job files older than 24h)
+    # Start background cleanup loop (deletes expired job files from R2 every 10 min)
     from app.services.cleanup_service import run_cleanup_loop
-    cleanup_task = asyncio.create_task(run_cleanup_loop(interval_seconds=300))
+    cleanup_task = asyncio.create_task(run_cleanup_loop(interval_seconds=600))
 
     yield
 

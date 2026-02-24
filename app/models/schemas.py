@@ -28,6 +28,7 @@ class SplitResponse(BaseModel):
     segments: List[SegmentInfo] = Field(description="List of all segments")
     original_filename: str = Field(description="Name of the original uploaded file")
     total_duration: float = Field(description="Total duration of original video in seconds")
+    expires_at: Optional[str] = Field(default=None, description="ISO-8601 UTC timestamp when files will be deleted")
 
 
 class ErrorResponse(BaseModel):

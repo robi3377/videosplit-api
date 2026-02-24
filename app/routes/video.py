@@ -26,7 +26,7 @@ import subprocess
 import zipfile
 import io
 
-JOB_EXPIRY_HOURS = 1  # Files deleted from R2 after 1 hour
+JOB_EXPIRY_MINUTES = 10  # Files deleted from R2 10 minutes after processing completes
 
 # Create router
 router = APIRouter()
@@ -174,7 +174,7 @@ async def split_video(
             crop_position=crop_position if aspect_ratio else None,
             status="completed",
             completed_at=now,
-            expires_at=now + timedelta(hours=JOB_EXPIRY_HOURS),
+            expires_at=now + timedelta(minutes=JOB_EXPIRY_MINUTES),
         )
         db.add(db_job)
 
@@ -198,6 +198,7 @@ async def split_video(
             segments=segment_infos,
             original_filename=file.filename,
             total_duration=total_duration,
+            expires_at=(now + timedelta(minutes=JOB_EXPIRY_MINUTES)).isoformat(),
         )
 
     except HTTPException:
@@ -362,10 +363,10 @@ async def get_recent_jobs(
         expires_at = j.expires_at
         if expires_at and expires_at.tzinfo is None:
             expires_at = expires_at.replace(tzinfo=timezone.utc)
-        hours_left = None
+        minutes_left = None
         if expires_at and j.status == "completed":
             delta = expires_at - now
-            hours_left = max(0, int(delta.total_seconds() / 3600))
+            minutes_left = max(0, int(delta.total_seconds() / 60))
 
         job_list.append({
             "id": j.id,
@@ -381,7 +382,7 @@ async def get_recent_jobs(
             "created_at": j.created_at.isoformat() if j.created_at else None,
             "completed_at": j.completed_at.isoformat() if j.completed_at else None,
             "expires_at": expires_at.isoformat() if expires_at else None,
-            "hours_until_expiry": hours_left,
+            "minutes_until_expiry": minutes_left,
             "error_message": j.error_message,
             "download_all_url": f"/api/v1/download-all/{j.job_id}" if j.status == "completed" else None,
         })
@@ -612,7 +613,7 @@ async def process_uploaded_video(
             db_job.crop_position = body.crop_position if body.aspect_ratio else None
             db_job.status = "completed"
             db_job.completed_at = now
-            db_job.expires_at = now + timedelta(hours=JOB_EXPIRY_HOURS)
+            db_job.expires_at = now + timedelta(minutes=JOB_EXPIRY_MINUTES)
 
             await record_usage(
                 user=current_user,
@@ -633,6 +634,7 @@ async def process_uploaded_video(
                 segments=segment_infos,
                 original_filename=db_job.original_filename,
                 total_duration=total_duration,
+                expires_at=(now + timedelta(minutes=JOB_EXPIRY_MINUTES)).isoformat(),
             )
 
         except HTTPException:

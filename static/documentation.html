@@ -80,7 +80,11 @@
                     </div>
 
                     <h3>Supported Formats</h3>
-                    <p>MP4, MOV, AVI, MKV, FLV, WMV (max 500MB)</p>
+                    <p>MP4, MOV, AVI, MKV. Files upload directly to cloud storage — no server-side size limit.</p>
+                    <div class="callout warning" style="margin-top:12px">
+                        <div class="callout-title">⏰ File Expiration</div>
+                        Processed segments are automatically deleted <strong>10 minutes after processing completes</strong>. Download all segments before the countdown expires.
+                    </div>
                 </section>
 
                 <section id="quickstart">
@@ -290,9 +294,15 @@ Content-Type: application/json
                     <p>Create an API key in your <a href="/static/dashboard.html#apikeys">dashboard</a>. Keys start with <code>vs_live_</code>.</p>
                     <pre><code>Authorization: vs_live_&lt;your_api_key&gt;</code></pre>
 
+                    <div class="callout warning" style="margin-bottom:12px">
+                        <div class="callout-title">⚠️ Paid Plan Required</div>
+                        API keys require a <strong>Starter, Pro, or Business</strong> plan. Free accounts can only upload via the web interface.
+                        <a href="/static/plans.html" style="color:#667eea">View pricing →</a>
+                    </div>
+
                     <div class="callout info">
                         <div class="callout-title">ℹ️ Getting an API Key</div>
-                        1. <a href="/static/auth.html">Sign in</a> to your account.<br>
+                        1. <a href="/static/auth.html">Sign in</a> to your account and upgrade to a paid plan.<br>
                         2. Go to <strong>Dashboard → API Keys → Create New Key</strong>.<br>
                         3. Copy the key immediately — it is shown only once.
                     </div>
@@ -313,10 +323,10 @@ Content-Type: application/json
                     <table class="params-table">
                         <thead><tr><th>Plan</th><th>Minutes/Month</th><th>Splits/Min</th><th>API Access</th><th>Price</th></tr></thead>
                         <tbody>
-                            <tr><td><strong>FREE</strong></td><td>100</td><td>5</td><td>—</td><td>$0</td></tr>
-                            <tr><td><strong>STARTER</strong></td><td>1,000</td><td>20</td><td>✓</td><td>$19/mo</td></tr>
-                            <tr><td><strong>PRO</strong></td><td>Unlimited</td><td>60</td><td>✓</td><td>$49/mo</td></tr>
-                            <tr><td><strong>ENTERPRISE</strong></td><td>Unlimited</td><td>200</td><td>✓</td><td>Custom</td></tr>
+                            <tr><td><strong>FREE</strong></td><td>60</td><td>5</td><td>—</td><td>$0</td></tr>
+                            <tr><td><strong>STARTER</strong></td><td>600</td><td>30</td><td>✓</td><td>$9/mo</td></tr>
+                            <tr><td><strong>PRO</strong></td><td>3,000</td><td>100</td><td>✓</td><td>$19/mo</td></tr>
+                            <tr><td><strong>BUSINESS</strong></td><td>15,000</td><td>500</td><td>✓</td><td>$49/mo</td></tr>
                         </tbody>
                     </table>
                     <p style="margin-top:12px">See the <a href="/static/plans.html">pricing page</a> for full details.</p>
@@ -538,24 +548,30 @@ Content-Type: application/json
                     <p>Use the ZIP download endpoint when you need multiple segments to save bandwidth and time.</p>
 
                     <h4>Storage</h4>
-                    <p>Segments are kept for 24 hours. Download them promptly to avoid data loss.</p>
+                    <p>Segments are kept for <strong>10 minutes</strong> after processing. Download them immediately — a countdown timer is shown in the web UI.</p>
                 </section>
 
                 <section id="rate-limits">
                     <h2>Rate Limits</h2>
                     <p>Rate limits are enforced per user per minute on the split endpoint:</p>
                     <table class="params-table">
-                        <thead><tr><th>Plan</th><th>Splits / Minute</th></tr></thead>
+                        <thead><tr><th>Plan</th><th>Price</th><th>Minutes/Month</th><th>Splits / Minute</th></tr></thead>
                         <tbody>
-                            <tr><td><strong>FREE</strong></td><td>5</td></tr>
-                            <tr><td><strong>STARTER</strong></td><td>20</td></tr>
-                            <tr><td><strong>PRO</strong></td><td>60</td></tr>
-                            <tr><td><strong>ENTERPRISE</strong></td><td>200</td></tr>
+                            <tr><td><strong>FREE</strong></td><td>$0</td><td>60</td><td>5</td></tr>
+                            <tr><td><strong>STARTER</strong></td><td>$9/mo</td><td>600</td><td>30</td></tr>
+                            <tr><td><strong>PRO</strong></td><td>$19/mo</td><td>3,000</td><td>100</td></tr>
+                            <tr><td><strong>BUSINESS</strong></td><td>$49/mo</td><td>15,000</td><td>500</td></tr>
                         </tbody>
                     </table>
                     <p style="margin-top:12px">When exceeded, the API returns <code>429 Too Many Requests</code> with a <code>Retry-After: 60</code> header. Wait one minute before retrying.</p>
+                    <div class="callout warning" style="margin-top:16px">
+                        <div class="callout-title">⚠️ API Access — Paid Plans Only</div>
+                        API keys and programmatic access are available on <strong>Starter, Pro, and Business</strong> plans only.
+                        The FREE plan supports web upload only. <a href="/static/plans.html" style="color:#667eea">Upgrade to unlock API access →</a>
+                    </div>
                 </section>
             </div>
+            <p style="text-align:center;color:var(--text-light,#9ca3af);font-size:.82em;padding:24px 0 8px">© 2026 Ubaris. All rights reserved.</p>
         </main>
     </div>
 

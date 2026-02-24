@@ -109,22 +109,19 @@ function renderOverview() {
     // Usage bar
     const used = currentUser.monthly_minutes_used;
     const limit = currentUser.monthly_minutes_limit;
-    const isPro = ['pro', 'enterprise'].includes(currentUser.plan_tier?.toLowerCase());
-    const pct = isPro ? 0 : Math.min(100, (used / limit) * 100);
+    const pct = Math.min(100, (used / limit) * 100);
     const fill = document.getElementById('usageBarFill');
     fill.style.width = pct + '%';
     fill.style.background = pct > 80 ? '#ef4444' : pct > 50 ? '#f59e0b' : '#10b981';
 
-    document.getElementById('usageNumbers').textContent = isPro
-        ? `${used.toFixed(1)} minutes used (Unlimited)`
-        : `${used.toFixed(1)} / ${limit} minutes`;
-    document.getElementById('usagePct').textContent = isPro ? 'Unlimited plan' : `${pct.toFixed(1)}% used`;
+    document.getElementById('usageNumbers').textContent = `${used.toFixed(1)} / ${limit} minutes`;
+    document.getElementById('usagePct').textContent = `${pct.toFixed(1)}% used`;
 
     const overviewBadge = document.getElementById('overviewPlanBadge');
     overviewBadge.textContent = planLabel(currentUser.plan_tier);
     overviewBadge.style.background = planColor(currentUser.plan_tier);
 
-    if (!isPro && pct > 80) {
+    if (pct > 80) {
         document.getElementById('overviewUpgradeLink').style.display = '';
         document.getElementById('overviewUpgradeLink').addEventListener('click', e => { e.preventDefault(); switchTab('billing'); });
     }
@@ -215,10 +212,10 @@ document.getElementById('cancelDeleteBtn').addEventListener('click', () => {
 // ======================== //
 
 const PLAN_DETAILS = {
-    free:       { label: 'FREE',     price: '$0',  mins: '100',    splits: '5/min',   features: ['Web upload only', '100 minutes/month', 'Standard support'] },
-    starter:    { label: 'STARTER',  price: '$19', mins: '1,000',  splits: '20/min',  features: ['API access', '1,000 minutes/month', 'Email support'] },
-    pro:        { label: 'PRO',      price: '$49', mins: 'Unlimited', splits: '60/min', features: ['API access', 'Unlimited minutes', 'Priority support'] },
-    enterprise: { label: 'ENTERPRISE', price: 'Custom', mins: 'Unlimited', splits: '200/min', features: ['Dedicated support', 'Unlimited everything', 'SLA guarantee'] },
+    free:       { label: 'FREE',     price: '$0',  tagline: 'Hobbyist',     mins: '60',     splits: '5/min',   features: ['Web upload only', '1 video at a time', 'Community support'] },
+    starter:    { label: 'STARTER',  price: '$9',  tagline: 'Creator',      mins: '600',    splits: '30/min',  features: ['API access', '3 concurrent uploads', 'Email support (24–48h)'] },
+    pro:        { label: 'PRO',      price: '$19', tagline: 'Professional', mins: '3,000',  splits: '100/min', features: ['Full API access', '10 concurrent uploads', 'Cropping + aspect ratio', 'Email support (12–24h)'] },
+    enterprise: { label: 'BUSINESS', price: '$49', tagline: 'Team',         mins: '15,000', splits: '500/min', features: ['Everything in Pro', 'Unlimited uploads', 'White-label option', 'Priority support (2–6h)', 'Dedicated account manager'] },
 };
 
 async function loadBilling() {
@@ -244,7 +241,7 @@ function renderCurrentPlan(status) {
                 <span class="sub-status ${isActive ? 'status-active' : ''}">${status.subscription_status || 'Active'}</span>
             </div>
             <div style="color:#6b7280;font-size:.9em">
-                ${status.monthly_minutes_used.toFixed(1)} / ${['pro','enterprise'].includes(tier) ? '∞' : status.monthly_minutes_limit} minutes used
+                ${status.monthly_minutes_used.toFixed(1)} / ${status.monthly_minutes_limit} minutes used
                 ${status.subscription_ends_at ? `<br>Renews ${formatDate(status.subscription_ends_at)}` : ''}
             </div>
         </div>
@@ -258,10 +255,11 @@ function renderPlanGrid(currentTier) {
     const tiers = ['free', 'starter', 'pro', 'enterprise'];
     const currentOrder = TIER_ORDER[currentTier?.toLowerCase()] ?? 0;
     const grid = document.getElementById('planGrid');
+    // Map tier key → plan name sent to checkout API
+    const checkoutPlan = { starter: 'starter', pro: 'pro', enterprise: 'business' };
     grid.innerHTML = tiers.map(tier => {
         const d = PLAN_DETAILS[tier];
         const isCurrent = tier === currentTier?.toLowerCase();
-        const isEnterprise = tier === 'enterprise';
         const isFree = tier === 'free';
         const targetOrder = TIER_ORDER[tier] ?? 0;
         const isUpgrade = targetOrder > currentOrder;
@@ -271,7 +269,8 @@ function renderPlanGrid(currentTier) {
             ${tier === 'pro' ? '<div class="plan-popular">Most Popular</div>' : ''}
             <div class="plan-card-header">
                 <div class="plan-name">${d.label}</div>
-                <div class="plan-price">${d.price}<span>${tier !== 'free' && !isEnterprise ? '/mo' : ''}</span></div>
+                <div class="plan-tagline" style="font-size:.75em;color:#9ca3af;margin-bottom:4px">${d.tagline}</div>
+                <div class="plan-price">${d.price}<span>${tier !== 'free' ? '/mo' : ''}</span></div>
             </div>
             <ul class="plan-features">
                 <li>✓ ${d.mins} minutes/month</li>
@@ -280,11 +279,9 @@ function renderPlanGrid(currentTier) {
             </ul>
             ${isCurrent
                 ? `<button class="plan-btn plan-btn-current" disabled>Current Plan</button>`
-                : isEnterprise
-                ? `<button class="plan-btn secondary-btn" style="margin:0;width:100%" onclick="showToast('Contact us at hello@videosplit.com','info')">Contact Sales</button>`
                 : isFree
                 ? `<button class="plan-btn secondary-btn" style="margin:0;width:100%;opacity:.7" onclick="openPortal()">Cancel Subscription →</button>`
-                : `<button class="plan-btn primary-btn" style="margin:0;width:100%" onclick="upgradePlan('${tier}')">${btnLabel}</button>`
+                : `<button class="plan-btn primary-btn" style="margin:0;width:100%" onclick="upgradePlan('${checkoutPlan[tier]}')">${btnLabel}</button>`
             }
         </div>`;
     }).join('');
@@ -386,8 +383,8 @@ function renderJobsTable(jobs) {
         const filenameTrunc = j.original_filename.length > 30
             ? j.original_filename.substring(0, 27) + '…'
             : j.original_filename;
-        const expiryLabel = j.hours_until_expiry !== null && j.status === 'completed'
-            ? `<span class="expiry-badge ${j.hours_until_expiry <= 6 ? 'expiry-soon' : ''}">⏰ ${j.hours_until_expiry}h left</span>`
+        const expiryLabel = j.minutes_until_expiry != null && j.status === 'completed'
+            ? `<span class="expiry-badge ${j.minutes_until_expiry <= 3 ? 'expiry-soon' : ''}">⏰ ${j.minutes_until_expiry}m left</span>`
             : '';
 
         return `
@@ -438,7 +435,7 @@ function renderJobsPagination(total, page, perPage) {
 function showJobDetail(job) {
     document.getElementById('jobDetailTitle').textContent = job.original_filename;
     const expiresLine = job.expires_at
-        ? `<p><strong>Expires:</strong> ${new Date(job.expires_at).toLocaleString()} (${job.hours_until_expiry ?? 0}h left)</p>`
+        ? `<p><strong>Expires:</strong> ${new Date(job.expires_at).toLocaleString()} (${job.minutes_until_expiry ?? 0}m left)</p>`
         : '';
     const segmentLinks = job.status === 'completed'
         ? `<div style="margin-top:12px">

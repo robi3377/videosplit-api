@@ -5,9 +5,10 @@
 let selectedFile = null;
 let currentJobId = null;
 let fileQueue = [];  // Multi-file queue
+let expiryTimerId = null;
 
-// Plan → max files per batch
-const MAX_FILES_BY_PLAN = { free: 1, starter: 5, pro: 10, enterprise: 20 };
+// Plan → max files per batch (free: 1, starter: 3, pro: 10, business/enterprise: 50)
+const MAX_FILES_BY_PLAN = { free: 1, starter: 3, pro: 10, enterprise: 50 };
 
 // API Base URL - change this when deploying
 const API_BASE_URL = window.location.origin;
@@ -221,6 +222,8 @@ function resetUpload() {
     selectedFile = null;
     currentJobId = null;
     fileInput.value = '';
+
+    if (expiryTimerId) { clearInterval(expiryTimerId); expiryTimerId = null; }
 
     // Reset UI
     fileInfo.style.display = 'none';
@@ -450,6 +453,38 @@ function displayResults(data) {
 
     // Show results section
     showSection('results');
+
+    // Start expiry countdown if server provided expires_at
+    if (data.expires_at) {
+        startExpiryCountdown(data.expires_at);
+    }
+}
+
+function startExpiryCountdown(expiresAtIso) {
+    if (expiryTimerId) { clearInterval(expiryTimerId); expiryTimerId = null; }
+
+    const expiresAt = new Date(expiresAtIso).getTime();
+
+    function update() {
+        const el = document.getElementById('expiryCountdown');
+        if (!el) return;
+        const remaining = expiresAt - Date.now();
+        if (remaining <= 0) {
+            el.textContent = 'expired';
+            el.style.color = '#ef4444';
+            const banner = document.getElementById('expiryBanner');
+            if (banner) banner.style.background = '#fee2e2';
+            clearInterval(expiryTimerId);
+            expiryTimerId = null;
+            return;
+        }
+        const mins = Math.floor(remaining / 60000);
+        const secs = Math.floor((remaining % 60000) / 1000);
+        el.textContent = `${mins}m ${String(secs).padStart(2, '0')}s`;
+    }
+
+    update();
+    expiryTimerId = setInterval(update, 1000);
 }
 
 function createSegmentItem(segment, index) {

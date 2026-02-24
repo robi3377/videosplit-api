@@ -22,10 +22,11 @@ router = APIRouter(prefix="/billing", tags=["billing"])
 _PLAN_PRICE_MAP = {
     "starter": settings.STRIPE_PRICE_ID_STARTER,
     "pro": settings.STRIPE_PRICE_ID_PRO,
+    "business": settings.STRIPE_PRICE_ID_BUSINESS,
 }
 
 # Numeric order used to determine upgrade vs downgrade
-_TIER_ORDER = {"free": 0, "starter": 1, "pro": 2, "enterprise": 3}
+_TIER_ORDER = {"free": 0, "starter": 1, "pro": 2, "business": 3, "enterprise": 3}
 
 
 @router.post("/checkout", response_model=CheckoutResponse)

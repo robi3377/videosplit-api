@@ -9,7 +9,7 @@ from app.saas_layer.apikeys.schemas import (
 )
 from app.saas_layer.auth.dependencies import get_current_active_user, get_current_user_jwt_only
 from app.saas_layer.db.base import get_db
-from app.saas_layer.db.models import User
+from app.saas_layer.db.models import PlanTier, User
 
 router = APIRouter(prefix="/api-keys", tags=["api-keys"])
 
@@ -23,7 +23,13 @@ async def create_key(
     """
     Create a new API key. Requires JWT authentication.
     The key plaintext is returned ONCE — store it securely.
+    API access is available on paid plans (Starter, Pro, Business) only.
     """
+    if current_user.plan_tier == PlanTier.FREE:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="API access requires a paid plan. Upgrade to Starter, Pro, or Business to create API keys.",
+        )
     api_key, plaintext = await apikey_service.create_api_key(
         user=current_user,
         name=body.name,

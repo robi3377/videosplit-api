@@ -26,8 +26,9 @@ router = APIRouter(prefix="/webhooks", tags=["webhooks"])
 # Built lazily so settings are already loaded
 def _get_price_plan_map() -> dict[str, tuple[PlanTier, int]]:
     return {
-        settings.STRIPE_PRICE_ID_STARTER: (PlanTier.STARTER, 1000),
-        settings.STRIPE_PRICE_ID_PRO: (PlanTier.PRO, 999999),
+        settings.STRIPE_PRICE_ID_STARTER: (PlanTier.STARTER, 600),
+        settings.STRIPE_PRICE_ID_PRO: (PlanTier.PRO, 3000),
+        settings.STRIPE_PRICE_ID_BUSINESS: (PlanTier.ENTERPRISE, 15000),
     }
 
 
@@ -159,7 +160,7 @@ async def _handle_subscription_deleted(event_data: dict, db: AsyncSession) -> No
         return
 
     user.plan_tier = PlanTier.FREE
-    user.monthly_minutes_limit = 100
+    user.monthly_minutes_limit = 60
     user.subscription_status = "canceled"
     user.stripe_subscription_id = None
     user.subscription_ends_at = None

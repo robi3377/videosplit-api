@@ -199,5 +199,5 @@ function planColor(tier) {
 }
 
 function planLabel(tier) {
-    return { free: 'FREE', starter: 'STARTER', pro: 'PRO', enterprise: 'ENTERPRISE' }[tier?.toLowerCase()] || tier?.toUpperCase();
+    return { free: 'FREE', starter: 'STARTER', pro: 'PRO', enterprise: 'BUSINESS' }[tier?.toLowerCase()] || tier?.toUpperCase();
 }

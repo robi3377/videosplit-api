@@ -25,7 +25,7 @@
                 <div class="step-number">2</div>
                 <div class="step-content">
                     <h3>Upload Your Video</h3>
-                    <p>Drag & drop your video file or click the upload area to browse. Supports MP4, MOV, AVI, MKV (max 500MB).</p>
+                    <p>Drag & drop your video file or click the upload area to browse. Supports MP4, MOV, AVI, MKV. No file size limit — files go directly to cloud storage.</p>
                 </div>
             </div>
 
@@ -33,7 +33,7 @@
                 <div class="step-number">3</div>
                 <div class="step-content">
                     <h3>Split & Download</h3>
-                    <p>Click "Split Video" and wait a moment. Once done, download individual segments or get them all as a ZIP file!</p>
+                    <p>Click "Split Video" and wait a moment. Once done, download individual segments or get them all as a ZIP file. <strong>Files are automatically deleted 10 minutes after processing — download promptly!</strong></p>
                 </div>
             </div>
 
@@ -144,7 +144,7 @@
                     <div class="upload-icon">📁</div>
                     <h2 id="uploadAreaTitle">Drop your video here</h2>
                     <p>or click to browse</p>
-                    <p class="file-hint" id="uploadAreaHint">Supports: MP4, MOV, AVI, MKV (max 500MB)</p>
+                    <p class="file-hint" id="uploadAreaHint">Supports: MP4, MOV, AVI, MKV · Files expire 10 min after processing</p>
                     <input type="file" id="fileInput" accept="video/mp4,video/quicktime,video/x-msvideo,video/x-matroska" hidden>
                 </div>
 
@@ -178,7 +178,9 @@
                 <div class="success-header">
                     <div class="success-icon">✅</div>
                     <h2>Split Complete!</h2>
-                    <p class="expiry-notice">⏰ Downloads expire in 24 hours</p>
+                    <div id="expiryBanner" style="background:#fef3c7;border:1px solid #f59e0b;border-radius:8px;padding:10px 18px;margin-top:12px;color:#92400e;font-weight:500;">
+                        ⏰ <strong>Download now!</strong> Files expire in <span id="expiryCountdown" style="font-weight:700;color:#d97706">10m 00s</span>
+                    </div>
                 </div>
 
                 <div class="video-info">
@@ -230,7 +232,6 @@
 
         <!-- Footer -->
         <footer>
-            <p>Built with ❤️ for your convenience</p>
             <p>
                 <a href="/documentation" target="_blank">API Documentation</a> •
                 <a href="#" id="footerHelpBtn">How to Use</a> •
@@ -238,6 +239,7 @@
                 <a href="/static/privacy.html">Privacy</a> •
                 <a href="/static/refund-policy.html">Refunds</a>
             </p>
+            <p style="margin-top:8px;color:#9ca3af;font-size:0.82rem">© 2026 Ubaris. All rights reserved.</p>
         </footer>
     </div>
 
