@@ -60,10 +60,10 @@ async def send_email(to: str, subject: str, html_body: str, text_body: str = "")
 async def send_verification_email(to: str, code: str) -> bool:
     # Always print to server console so devs can verify even without SMTP
     logger.warning(">>> VERIFICATION CODE for %s: %s <<<", to, code)
-    subject = "Verify your VideoSplit account"
+    subject = "Verify your VideoSlicing account"
     html = f"""
     <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
-      <h2 style="color:#667eea">VideoSplit — Email Verification</h2>
+      <h2 style="color:#667eea">VideoSlicing — Email Verification</h2>
       <p>Hi there,</p>
       <p>Your verification code is:</p>
       <div style="font-size:2.5em;font-weight:700;letter-spacing:.2em;color:#111;
@@ -72,18 +72,18 @@ async def send_verification_email(to: str, code: str) -> bool:
       <p style="color:#6b7280">This code expires in <strong>15 minutes</strong>.</p>
       <p style="color:#6b7280">If you didn't create an account, you can safely ignore this email.</p>
       <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">
-      <p style="color:#9ca3af;font-size:.85em">— VideoSplit Team</p>
+      <p style="color:#9ca3af;font-size:.85em">— VideoSlicing Team</p>
     </div>
     """
-    text = f"Your VideoSplit verification code is: {code}\nExpires in 15 minutes."
+    text = f"Your VideoSlicing verification code is: {code}\nExpires in 15 minutes."
     return await send_email(to, subject, html, text)
 
 
 async def send_password_reset_email(to: str, reset_url: str) -> bool:
-    subject = "Reset your VideoSplit password"
+    subject = "Reset your VideoSlicing password"
     html = f"""
     <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
-      <h2 style="color:#667eea">VideoSplit — Password Reset</h2>
+      <h2 style="color:#667eea">VideoSlicing — Password Reset</h2>
       <p>Hi,</p>
       <p>Click the button below to reset your password:</p>
       <div style="text-align:center;margin:28px 0">
@@ -98,23 +98,23 @@ async def send_password_reset_email(to: str, reset_url: str) -> bool:
         Or copy this link: {reset_url}
       </p>
       <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">
-      <p style="color:#9ca3af;font-size:.85em">— VideoSplit Team</p>
+      <p style="color:#9ca3af;font-size:.85em">— VideoSlicing Team</p>
     </div>
     """
-    text = f"Reset your VideoSplit password: {reset_url}\nLink expires in 1 hour."
+    text = f"Reset your VideoSlicing password: {reset_url}\nLink expires in 1 hour."
     return await send_email(to, subject, html, text)
 
 
 async def send_password_changed_email(to: str) -> bool:
-    subject = "Your VideoSplit password was changed"
+    subject = "Your VideoSlicing password was changed"
     html = """
     <div style="font-family:sans-serif;max-width:480px;margin:0 auto;padding:32px">
-      <h2 style="color:#667eea">VideoSplit — Password Changed</h2>
+      <h2 style="color:#667eea">VideoSlicing — Password Changed</h2>
       <p>Your password was successfully changed.</p>
       <p style="color:#6b7280">If you didn't do this, please contact us immediately
          or reset your password.</p>
       <hr style="border:none;border-top:1px solid #e5e7eb;margin:24px 0">
-      <p style="color:#9ca3af;font-size:.85em">— VideoSplit Team</p>
+      <p style="color:#9ca3af;font-size:.85em">— VideoSlicing Team</p>
     </div>
     """
     return await send_email(to, subject, html)
@@ -126,7 +126,7 @@ async def send_alert_email(error_type: str, detail: str, stack_trace: str = "") 
         return False
     from datetime import datetime, timezone
     ts = datetime.now(timezone.utc).strftime("%Y-%m-%d %H:%M:%S UTC")
-    subject = f"[ALERT] VideoSplit — {error_type}"
+    subject = f"[ALERT] VideoSlicing — {error_type}"
     html = f"""
     <div style="font-family:monospace;max-width:640px;margin:0 auto;padding:32px">
       <h2 style="color:#ef4444">[ALERT] {error_type}</h2>

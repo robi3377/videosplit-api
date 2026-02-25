@@ -62,7 +62,7 @@ async def lifespan(app: FastAPI):
 # FastAPI application
 # ---------------------------------------------------------------------------
 app = FastAPI(
-    title="VideoSplit SaaS API",
+    title="VideoSlicing SaaS API",
     description="Split videos into segments — with authentication, plans, and billing",
     version="2.0.0",
     lifespan=lifespan,
@@ -113,7 +113,7 @@ async def documentation():
 async def api_info():
     """API information and endpoint overview."""
     return {
-        "message": "VideoSplit SaaS API",
+        "message": "VideoSlicing SaaS API",
         "version": "2.0.0",
         "status": "running",
         "documentation": "/documentation",

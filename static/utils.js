@@ -1,5 +1,5 @@
 // ======================== //
-// VideoSplit — utils.js    //
+// VideoSlicing — utils.js    //
 // Shared auth & API layer  //
 // ======================== //
 

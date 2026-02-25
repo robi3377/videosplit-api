@@ -1,4 +1,4 @@
-# VideoSplit API
+# VideoSlicing API
 
 A fast, simple REST API for splitting videos into equal-length segments. Built with FastAPI and FFmpeg.
 
